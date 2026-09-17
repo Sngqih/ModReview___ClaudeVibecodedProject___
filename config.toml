@@ -1,0 +1,39 @@
+[llm]
+provider = "anthropic"                    # key in llm/registry.py
+model = "claude-haiku-4-5-20251001"       # any model ID the provider accepts
+max_output_tokens = 4000
+temperature = 0.2
+
+[llm.fallback]                            # used if the primary call errors
+provider = "anthropic"
+model = "claude-sonnet-5"
+
+[search]
+provider = "tavily"                       # tavily | brave | claude_websearch | none
+max_results = 8
+
+[sources]
+nusmods = true
+disqus = true
+reddit = true
+websearch = true
+
+[limits]
+max_chars_per_doc = 6000
+max_total_chars = 120000                  # budget for all text sent to the LLM
+max_input_tokens_per_report = 60000       # cost guard: chars / 4 estimate
+cache_ttl_days = 14
+http_timeout_s = 20
+
+[server]
+host = "127.0.0.1"
+port = 8765
+
+# Prices in USD per million tokens. Edit freely; unknown models show tokens only.
+[pricing."claude-haiku-4-5-20251001"]
+input_per_mtok = 1.0
+output_per_mtok = 5.0
+
+[pricing."claude-sonnet-5"]
+input_per_mtok = 3.0
+output_per_mtok = 15.0

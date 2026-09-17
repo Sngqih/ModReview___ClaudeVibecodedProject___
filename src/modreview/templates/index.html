@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}ModReview · Search{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>What is this module really like?</h1>
+  <p class="lede">Type an NUS module code. ModReview reads NUSMods, student reviews, r/nus and the web, then writes a sourced report.</p>
+  <form class="search" action="/review" method="get">
+    <input name="code" type="text" placeholder="CS2040S" autocomplete="off" autofocus
+           pattern="[A-Za-z]{2,4}[0-9]{4}[A-Za-z]{0,3}" required>
+    <button type="submit">Review</button>
+  </form>
+  <p class="meta">Summarising with <code>{{ provider }}</code> · <code>{{ model }}</code></p>
+</section>
+{% endblock %}

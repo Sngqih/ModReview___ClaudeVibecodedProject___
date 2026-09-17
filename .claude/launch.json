@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "modreview",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "modreview", "--no-browser", "--debug"],
+      "port": 8765
+    }
+  ]
+}

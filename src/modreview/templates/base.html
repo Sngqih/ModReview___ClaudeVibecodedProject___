@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}ModReview{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">ModReview</a>
+    <nav>
+      <a href="/">Search</a>
+      <a href="/history">History</a>
+      <a href="/settings">Settings</a>
+    </nav>
+  </header>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">ModReview {{ app_version }} · runs on 127.0.0.1 only</footer>
+</body>
+</html>
