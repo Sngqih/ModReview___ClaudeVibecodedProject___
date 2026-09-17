@@ -17,6 +17,14 @@ uv run modreview
 
 Flags: `--debug` (source counts and prompt size), `--port N`, `--no-browser`.
 
+Debug the sources without the LLM:
+
+```bash
+uv run modreview fetch CS2040S -v
+```
+
+Notes for this laptop: TLS is re-signed by local software, so uv uses the Windows certificate store (`[tool.uv] system-certs`) and the app uses `truststore`. Reddit's public `.json` endpoint answers 403 here, so the Reddit source falls back to search snippets.
+
 Non-secret settings live in `config.toml` and can be changed from the Settings page. Suggested models: `claude-haiku-4-5-20251001` (cheapest, fine for summarising) or `claude-sonnet-5` (more nuance).
 
 ## Development

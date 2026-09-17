@@ -1,0 +1,199 @@
+[
+ {
+  "moduleCode": "CS1101S",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Programming Methodology"
+ },
+ {
+  "moduleCode": "CS1231S",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Discrete Structures"
+ },
+ {
+  "moduleCode": "CS2030S",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Programming Methodology II"
+ },
+ {
+  "moduleCode": "CS2040",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Data Structures and Algorithms"
+ },
+ {
+  "moduleCode": "CS2040S",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Data Structures and Algorithms"
+ },
+ {
+  "moduleCode": "MA1521",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Calculus for Computing"
+ },
+ {
+  "moduleCode": "MA1522",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Linear Algebra for Computing"
+ },
+ {
+  "moduleCode": "ABM5001",
+  "semesters": [
+   2
+  ],
+  "title": "Leadership in Biomedicine"
+ },
+ {
+  "moduleCode": "ABM5002",
+  "semesters": [
+   2
+  ],
+  "title": "Advanced Biostatistics for Research"
+ },
+ {
+  "moduleCode": "ABM5003",
+  "semesters": [
+   1
+  ],
+  "title": "Biomedical Innovation & Enterprise"
+ },
+ {
+  "moduleCode": "ABM5004",
+  "semesters": [
+   1,
+   2
+  ],
+  "title": "Capstone Project"
+ },
+ {
+  "moduleCode": "ABM5005",
+  "semesters": [
+   1
+  ],
+  "title": "Advanced Agile Project Management for Biomedicine Practitioners"
+ },
+ {
+  "moduleCode": "ABM5101",
+  "semesters": [
+   1
+  ],
+  "title": "Applied Immunology"
+ },
+ {
+  "moduleCode": "ABM5102",
+  "semesters": [
+   1
+  ],
+  "title": "Vaccine development and its modern applications"
+ },
+ {
+  "moduleCode": "ABM5103",
+  "semesters": [
+   1
+  ],
+  "title": "Advanced technologies in immune therapeutic development"
+ },
+ {
+  "moduleCode": "ABM5104",
+  "semesters": [
+   2
+  ],
+  "title": "Microbiome-Aging-Immunity crosstalk"
+ },
+ {
+  "moduleCode": "ABM5105",
+  "semesters": [
+   1
+  ],
+  "title": "Drugs used in Infectious Diseases"
+ },
+ {
+  "moduleCode": "ABM5106",
+  "semesters": [
+   2
+  ],
+  "title": "Anticancer Therapeutics"
+ },
+ {
+  "moduleCode": "ABM5107",
+  "semesters": [
+   2
+  ],
+  "title": "One World, One Health: Ecosystems, Animals and Us"
+ },
+ {
+  "moduleCode": "AC5001",
+  "semesters": [
+   1
+  ],
+  "title": "Architectural History of Singapore"
+ },
+ {
+  "moduleCode": "AC5002",
+  "semesters": [
+   1
+  ],
+  "title": "Conservation Approaches and Philosophies"
+ },
+ {
+  "moduleCode": "AC5004",
+  "semesters": [
+   2
+  ],
+  "title": "Architectural Heritage Management"
+ },
+ {
+  "moduleCode": "AC5007",
+  "semesters": [
+   2
+  ],
+  "title": "Dissertation"
+ },
+ {
+  "moduleCode": "AC5008",
+  "semesters": [
+   2
+  ],
+  "title": "Design for Conservation"
+ },
+ {
+  "moduleCode": "AC5009",
+  "semesters": [
+   1
+  ],
+  "title": "Design for Adaptive Reuse"
+ },
+ {
+  "moduleCode": "AC5010",
+  "semesters": [
+   2
+  ],
+  "title": "Historic Buildings Survey and Recording"
+ },
+ {
+  "moduleCode": "AC5011",
+  "semesters": [
+   1
+  ],
+  "title": "Conservation of C20th Buildings"
+ }
+]

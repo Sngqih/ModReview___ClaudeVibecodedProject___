@@ -1,0 +1,17 @@
+{
+  "cursor": {"prev": "0:0:0", "hasNext": false, "next": null, "hasPrev": true, "total": null, "id": "2:0:0", "more": false},
+  "code": 0,
+  "response": [
+    {
+      "id": "6000000005",
+      "message": "<p>AY22/23 S2: content is fundamental, you will use it in every later CS mod. Practice the past-year papers, the style repeats.</p>",
+      "raw_message": "AY22/23 S2: content is fundamental, you will use it in every later CS mod. Practice the past-year papers, the style repeats.",
+      "createdAt": "2023-05-30T08:00:00",
+      "likes": 7,
+      "dislikes": 0,
+      "isDeleted": false,
+      "isSpam": false,
+      "author": {"name": "senior"}
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "kind": "Listing",
+    "data": {
+      "children": [
+        {
+          "kind": "t3",
+          "data": {
+            "title": "CS2040S how hard is it really?",
+            "selftext": "Taking CS2040S next sem. Heard the PS are brutal. Any advice?",
+            "score": 45,
+            "created_utc": 1715000000,
+            "author": "nervous_y1",
+            "permalink": "/r/nus/comments/abc123/cs2040s_how_hard/",
+            "num_comments": 4
+          }
+        }
+      ]
+    }
+  },
+  {
+    "kind": "Listing",
+    "data": {
+      "children": [
+        {
+          "kind": "t1",
+          "data": {
+            "body": "It is hard but doable. Start the problem sets the day they release.",
+            "score": 30,
+            "created_utc": 1715001000,
+            "author": "senior_a",
+            "replies": {
+              "kind": "Listing",
+              "data": {
+                "children": [
+                  {
+                    "kind": "t1",
+                    "data": {
+                      "body": "Agree. Also the midterm in AY23/24 was harder than finals. Prof Seth still teaching it.",
+                      "score": 55,
+                      "created_utc": 1715002000,
+                      "author": "senior_b",
+                      "replies": ""
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "kind": "t1",
+          "data": {
+            "body": "[deleted]",
+            "score": 2,
+            "created_utc": 1715003000,
+            "author": "[deleted]",
+            "replies": ""
+          }
+        },
+        {
+          "kind": "t1",
+          "data": {
+            "body": "Bell curve is steep, everyone scores high on PS so finals decide.",
+            "score": 10,
+            "created_utc": 1715004000,
+            "author": "c",
+            "replies": ""
+          }
+        },
+        {"kind": "more", "data": {"count": 3, "children": ["x1", "x2"]}}
+      ]
+    }
+  }
+]

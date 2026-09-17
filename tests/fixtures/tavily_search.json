@@ -1,0 +1,36 @@
+{
+  "query": "\"CS2040S\" NUS review",
+  "results": [
+    {
+      "title": "CS2040S review - my honest take",
+      "url": "https://example-blog.sg/cs2040s-review",
+      "content": "CS2040S is the data structures module at NUS. Workload was around 12 hours a week for me. The problem sets are weekly and graded. Finals are 40 percent, midterm 20 percent, problem sets 25 percent and the rest is participation and assignments. I found the module tough but fair. The bell curve is steep since most people in the cohort are strong coders. Prof Seth's lectures were engaging and the tutorial TAs were helpful. My tip: start each PS early, the later ones take a full weekend. I took it in AY23/24 semester 1 and it was one of the most useful modules I have done so far, everything later builds on it.",
+      "score": 0.91,
+      "published_date": "2024-06-01T00:00:00Z"
+    },
+    {
+      "title": "NUS CS modules ranked",
+      "url": "https://another-site.com/cs-ranked",
+      "content": "Short snippet only.",
+      "score": 0.7
+    },
+    {
+      "title": "CS2040S on NUSMods",
+      "url": "https://nusmods.com/courses/CS2040S/data-structures-and-algorithms",
+      "content": "Official page.",
+      "score": 0.99
+    },
+    {
+      "title": "Reddit thread",
+      "url": "https://www.reddit.com/r/nus/comments/abc123/cs2040s_how_hard/",
+      "content": "reddit content",
+      "score": 0.8
+    },
+    {
+      "title": "Syllabus PDF",
+      "url": "https://www.comp.nus.edu.sg/cs2040s/syllabus.pdf",
+      "content": "pdf",
+      "score": 0.5
+    }
+  ]
+}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 import threading
 import webbrowser
 from pathlib import Path
@@ -62,10 +63,22 @@ def _open_browser_later(url: str, delay: float = 1.0) -> None:
 
 
 def run() -> None:
-    """``uv run modreview`` - start the server on 127.0.0.1 and open the browser."""
+    """``uv run modreview`` - start the server on 127.0.0.1 and open the browser.
+
+    ``uv run modreview fetch CS2040S`` runs the source-debug CLI instead (see ``cli.py``).
+    """
+    if len(sys.argv) > 1 and sys.argv[1] == "fetch":
+        from modreview.cli import fetch_main
+
+        sys.argv = [f"{sys.argv[0]} fetch", *sys.argv[2:]]
+        fetch_main()
+        return
+
     import uvicorn
 
-    parser = argparse.ArgumentParser(prog="modreview")
+    parser = argparse.ArgumentParser(
+        prog="modreview", epilog="subcommand: modreview fetch CODE  (debug: doc counts per source)"
+    )
     parser.add_argument(
         "--debug", action="store_true", help="verbose logs, source counts, prompt size"
     )

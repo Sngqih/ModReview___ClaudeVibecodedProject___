@@ -25,3 +25,32 @@ Decisions
 - **Static preview config**: `.claude/launch.json` (repo) starts the server for the desktop app's browser pane with `--no-browser --debug`.
 
 M1 accepted 2026-09-17: server up on 127.0.0.1:8765, `pytest` 8 passed, `ruff check` + `ruff format --check` clean.
+
+## M2: Sources
+
+Checklist
+- [x] NUSMods source: facts + module list cache, AY fallback, code validation
+- [x] Disqus source: ident -> link fallbacks, pagination, HTML strip, length filter
+- [x] Web search source: Tavily provider, query dedupe, domain exclusions, trafilatura extraction, code filter
+- [x] Reddit source: search discovery -> .json best effort -> snippet fallback; optional asyncpraw path
+- [x] Debug CLI prints doc counts per source
+- [x] Fixture tests for every source (respx, no network)
+- [x] Real endpoint behaviour recorded below
+
+Real endpoint behaviour (2026-09-17, no API keys available yet)
+- **NUSMods**: `GET /v2/2026-2027/modules/{CODE}.json` returns 200 for CS2040S, CS1101S, MA1521; `ZZ9999` gives an nginx 404 HTML page. `moduleList.json` is ~560 KB with 6773 entries. The three responses are saved under `tests/fixtures/` verbatim; the module list is trimmed to a 27-entry sample.
+- **Reddit public `.json`**: both `/r/nus/search.json` and `/r/nus.json` answer **403 with an HTML block page** from this network, even with the descriptive User-Agent. So on this laptop the Reddit source will always fall back to search snippets. The code still tries `.json` once per report (first thread only, then stops) in case Reddit relaxes it. Not circumvented.
+- **Disqus / Tavily / Anthropic**: not yet verified live (keys pending). The Disqus selector order (`thread:ident` then two `thread:link` forms) is implemented; `DisqusSource.selector_used` records which one worked so the live check is a one-liner later.
+
+Decisions
+- **`uv run modreview fetch CODE` instead of `uv run modreview-fetch CODE`.** OneDrive refused to let uv create `modreview-fetch.exe` in `.venv/Scripts` (access denied on that exact filename only, works elsewhere). One console script with a `fetch` subcommand sidesteps it. Same flags: `-v` lists docs, `--json FILE` dumps them.
+- **`truststore` for httpx.** Python's certifi bundle failed with `CERTIFICATE_VERIFY_FAILED` on this laptop (TLS is re-signed locally, Norton is installed). `http.make_client()` uses the Windows certificate store instead. Same root cause as the uv `system-certs` setting.
+- **`SearchProvider.search()` takes `include_domains`/`exclude_domains`.** Tavily honours them natively; providers without native filters can fold them into the query with `site_filter_query()`. Reddit discovery uses `include_domains=["reddit.com"]` and web search excludes nusmods.com and reddit.com, which is more reliable than `site:` in the query text.
+- **One `SourceDoc` per Reddit thread**, not per comment: post + top 30 comments by score (replies flattened, per owner's choice), truncated to `max_chars_per_doc` from the lowest-scored comment up. Per-comment docs would swamp the budget with two-line docs.
+- **Reddit stops calling `.json` after the first block** in a request. Every remaining thread uses its search snippet; the status note says how many.
+- **Web pages from nus.edu.sg are kept** (owner's choice). Only nusmods.com and reddit.com are excluded, since other sources cover them.
+- **`asyncpraw` is an optional extra** (`uv sync --extra reddit`), only imported when Reddit OAuth credentials are present. If the import fails the source logs it and uses the search path.
+- **Disqus posts shorter than 30 chars, deleted or spam are dropped**; `raw_message` is preferred over stripping `message` HTML. Score = likes minus dislikes.
+- **`gather_sources()` runs NUSMods first, then Disqus/Reddit/Web concurrently** with `return_exceptions=True`; a missing key becomes `SourceStatus.error`, never an exception. A progress callback fires once per source, which M5 wires to SSE.
+
+M2 accepted 2026-09-17: `pytest` 57 passed, `ruff` clean, live `modreview fetch` for CS2040S/CS1101S/MA1521 returns NUSMods facts; "at least one other source" check is pending API keys (fixture tests cover them).

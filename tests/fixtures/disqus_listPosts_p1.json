@@ -1,0 +1,50 @@
+{
+  "cursor": {"prev": null, "hasNext": true, "next": "1:0:0", "hasPrev": false, "total": null, "id": "1:0:0", "more": true},
+  "code": 0,
+  "response": [
+    {
+      "id": "6000000001",
+      "message": "<p>Took this in AY23/24 S1 under Prof Seth. Workload is heavy: weekly problem sets + 2 programming assignments. Finals were fair but time-pressured. Bell curve is steep because everyone is strong.</p>",
+      "raw_message": "Took this in AY23/24 S1 under Prof Seth. Workload is heavy: weekly problem sets + 2 programming assignments. Finals were fair but time-pressured. Bell curve is steep because everyone is strong.",
+      "createdAt": "2024-05-12T09:31:00",
+      "likes": 12,
+      "dislikes": 0,
+      "isDeleted": false,
+      "isSpam": false,
+      "author": {"name": "cs_kid", "username": "cs_kid"}
+    },
+    {
+      "id": "6000000002",
+      "message": "<p>Honestly &quot;ok&quot; module. Tutorials were useful, lectures less so. Do the PS early.<br>Midterm was harder than finals.</p>",
+      "raw_message": null,
+      "createdAt": "2023-12-02T14:05:10",
+      "likes": 3,
+      "dislikes": 1,
+      "isDeleted": false,
+      "isSpam": false,
+      "author": {"name": "anon2023"}
+    },
+    {
+      "id": "6000000003",
+      "message": "<p>nice</p>",
+      "raw_message": "nice",
+      "createdAt": "2023-11-20T10:00:00",
+      "likes": 0,
+      "dislikes": 0,
+      "isDeleted": false,
+      "isSpam": false,
+      "author": {"name": "short"}
+    },
+    {
+      "id": "6000000004",
+      "message": "<p>This comment was deleted but is long enough to pass the length filter.</p>",
+      "raw_message": "This comment was deleted but is long enough to pass the length filter.",
+      "createdAt": "2023-11-19T10:00:00",
+      "likes": 0,
+      "dislikes": 0,
+      "isDeleted": true,
+      "isSpam": false,
+      "author": {"name": "gone"}
+    }
+  ]
+}
