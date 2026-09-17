@@ -54,3 +54,26 @@ Decisions
 - **`gather_sources()` runs NUSMods first, then Disqus/Reddit/Web concurrently** with `return_exceptions=True`; a missing key becomes `SourceStatus.error`, never an exception. A progress callback fires once per source, which M5 wires to SSE.
 
 M2 accepted 2026-09-17: `pytest` 57 passed, `ruff` clean, live `modreview fetch` for CS2040S/CS1101S/MA1521 returns NUSMods facts; "at least one other source" check is pending API keys (fixture tests cover them).
+
+## M3: LLM layer
+
+Checklist
+- [x] `LLMProvider` protocol, `Usage`, `ModelInfo`, transient/permanent/output error classes
+- [x] `AnthropicProvider`: Models API listing, structured output, one validation retry, error mapping
+- [x] Registry (`llm/registry.py`), fallback chain, usage + cost estimate from `[pricing]`
+- [x] Versioned prompt `prompts/summarise_v1.md`, `<doc>` wrapping with delimiter hardening
+- [x] Fake provider tests (no network)
+- [ ] One manual run against the real API returns a valid `ReviewReport` (pending `ANTHROPIC_API_KEY` in `.env`; run `uv run modreview fetch CS2040S --summarise`)
+
+Decisions
+- **Structured output via `output_config.format` (SDK `messages.parse(output_format=Schema)`), not forced tool use.** The plan's tool-use trick relies on `tool_choice: {type: "tool"}`, which the newest Claude models reject (400). JSON-schema structured outputs are supported by every current model including Haiku 4.5, validate to the pydantic model directly, and need no tool definition. If a future provider lacks structured outputs, its own `generate_structured` can use tool use behind the same protocol.
+- **`temperature` is kept in the protocol and config but the Anthropic provider does not send it.** Current Claude models reject sampling parameters and the SDK's `parse()` has no such argument. The `openai_compat` provider (M6) will use it.
+- **Fallback triggers (owner's choice):** `LLMTransientError` (429, 5xx/overloaded, timeout, network) and `LLMOutputError` (output failed validation twice, or was cut off at `max_tokens`). `LLMPermanentError` (401/403/404/400/402, refusal) is raised immediately; the fallback would fail identically.
+- **Validation retry** happens inside the provider: the second attempt appends the pydantic error to the user message. Both attempts' tokens are counted in `Usage`.
+- **Cost estimate** treats cache reads as 10% and cache writes as 125% of the input price. Unknown model -> `cost_usd = None`, the UI shows tokens only.
+- **Model list** comes from `client.models.list()` sorted newest first; nothing is hard-coded. Pricing table updated to current list prices (Haiku 4.5 $1/$5, Sonnet 5 $2/$10, Opus 5 $5/$25).
+- **Prompt hardening:** any `</doc` inside a document body is rewritten to `<\/doc` so a scraped page cannot close its own delimiter; attributes are HTML-escaped. The system prompt states that documents are untrusted data.
+- **`--summarise` flag on `modreview fetch`** exists for the manual real-API check and prints the report JSON, usage and cost.
+- **Thin evidence (owner's choice, implemented in M4):** when no opinion docs come back, the pipeline will skip the LLM and render a facts-only page.
+
+M3 checks 2026-09-17: `pytest` 73 passed, `ruff` clean. Real-API run pending the key.

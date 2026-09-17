@@ -135,6 +135,69 @@ class SourceResult(BaseModel):
     docs: list[SourceDoc] = Field(default_factory=list)
 
 
+# --------------------------------------------------------------------------- LLM output
+
+
+Sentiment = Literal[
+    "very positive", "positive", "mixed", "negative", "very negative", "insufficient data"
+]
+Confidence = Literal["high", "medium", "low"]
+
+
+class Claim(BaseModel):
+    text: str = Field(description="One plain-language claim, 1-2 sentences.")
+    source_ids: list[str] = Field(
+        description="IDs of the <doc> elements that support this claim, e.g. ['d3a9f1c2e0']."
+    )
+
+
+class LecturerNote(BaseModel):
+    name: str | None = Field(description="Lecturer name as written in the sources, or null.")
+    semester: str | None = Field(description='Semester the note applies to, e.g. "AY24/25 S1".')
+    notes: list[Claim]
+
+
+class ReviewReport(BaseModel):
+    """The structured review. Every claim must cite at least one <doc id>."""
+
+    module_code: str
+    one_line_verdict: str = Field(description="One sentence a student could read and move on.")
+    overall_sentiment: Sentiment
+    difficulty: Literal[1, 2, 3, 4, 5] | None = Field(
+        description="1 = easy, 5 = very hard. null when the evidence is too thin."
+    )
+    workload_summary: list[Claim] = Field(
+        description="Real hours vs the official workload numbers."
+    )
+    assessment_breakdown: list[Claim] = Field(
+        description="Finals, midterms, projects, weightings, bell curve talk."
+    )
+    content_and_usefulness: list[Claim]
+    lecturers_and_teaching: list[LecturerNote]
+    common_complaints: list[Claim]
+    tips_to_do_well: list[Claim]
+    who_should_take_it: list[Claim]
+    disagreements: list[Claim] = Field(description="Where sources conflict, side by side.")
+    data_freshness: str = Field(description='e.g. "Most reviews from AY22/23 to AY24/25".')
+    confidence: Confidence
+
+    def claim_lists(self) -> list[list[Claim]]:
+        out = [
+            self.workload_summary,
+            self.assessment_breakdown,
+            self.content_and_usefulness,
+            self.common_complaints,
+            self.tips_to_do_well,
+            self.who_should_take_it,
+            self.disagreements,
+        ]
+        out.extend(note.notes for note in self.lecturers_and_teaching)
+        return out
+
+    def all_source_ids(self) -> set[str]:
+        return {sid for claims in self.claim_lists() for c in claims for sid in c.source_ids}
+
+
 def chunk_text(text: str, size: int) -> list[str]:
     """Split on paragraph boundaries into chunks of at most ``size`` chars."""
     if len(text) <= size:
