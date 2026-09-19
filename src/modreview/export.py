@@ -9,7 +9,9 @@ from modreview.web import (
     REPORT_SECTIONS,
     SOURCE_LABELS,
     citation_numbers,
+    claim_date,
     difficulty_label,
+    doc_period,
     exam_text,
     sgt,
 )
@@ -25,10 +27,18 @@ def _cites(ids: list[str], numbers: dict[str, int]) -> str:
     return "".join(f"[{numbers[i]}]" for i in ids if i in numbers)
 
 
+def _when(claim, docs_by_id) -> str:
+    dt = claim_date(claim, docs_by_id)
+    if not dt:
+        return ""
+    return f" *({dt['label']}{', may be out of date' if dt['stale'] else ''})*"
+
+
 def to_markdown(result: ReviewResult) -> str:
     f = result.facts
     r = result.report
     numbers = citation_numbers(result)
+    docs_by_id = {d.id: d for d in result.docs}
     out: list[str] = [f"# {f.module_code} {_esc(f.title)}", ""]
 
     if r is not None:
@@ -66,7 +76,10 @@ def to_markdown(result: ReviewResult) -> str:
             if not claims:
                 return
             out.extend([f"## {title}", ""])
-            out.extend(f"- {_esc(c.text)} {_cites(c.source_ids, numbers)}" for c in claims)
+            out.extend(
+                f"- {_esc(c.text)} {_cites(c.source_ids, numbers)}{_when(c, docs_by_id)}"
+                for c in claims
+            )
             out.append("")
 
         for title, attr in REPORT_SECTIONS[:3]:
@@ -77,14 +90,17 @@ def to_markdown(result: ReviewResult) -> str:
                 who = " · ".join(x for x in (note.name, note.semester) if x) or "Unnamed"
                 out.append(f"**{_esc(who)}**")
                 out.append("")
-                out.extend(f"- {_esc(c.text)} {_cites(c.source_ids, numbers)}" for c in note.notes)
+                out.extend(
+                    f"- {_esc(c.text)} {_cites(c.source_ids, numbers)}{_when(c, docs_by_id)}"
+                    for c in note.notes
+                )
                 out.append("")
         for title, attr in REPORT_SECTIONS[3:]:
             section(title, getattr(r, attr))
 
     out.extend(["## Sources", ""])
     for d in sorted(result.docs, key=lambda d: numbers[d.id]):
-        when = sgt(d.published_at, "%Y-%m-%d") if d.published_at else "undated"
+        when = doc_period(d)
         title = _esc(d.title or d.url)
         out.append(f"{numbers[d.id]}. [{title}]({d.url}) · {SOURCE_LABELS.get(d.source)} · {when}")
     out.append("")

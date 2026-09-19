@@ -17,12 +17,17 @@ nusmods = true
 disqus = true
 reddit = true
 websearch = true
+reddit_archive = true
+course_pages = true
+blogs = true
 
 [limits]
 max_chars_per_doc = 6000
 max_total_chars = 120000                  # budget for all text sent to the LLM
 max_input_tokens_per_report = 60000       # cost guard: chars / 4 estimate
 cache_ttl_days = 14
+max_source_age_years = 4
+min_recent_docs = 10
 http_timeout_s = 20
 
 [server]

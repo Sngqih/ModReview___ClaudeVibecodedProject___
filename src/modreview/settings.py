@@ -90,7 +90,12 @@ class SourcesConfig(BaseModel):
     nusmods: bool = True
     disqus: bool = True
     reddit: bool = True
+    # Full, dated r/nus threads from the Arctic Shift archive (third-party Reddit archive).
+    # Off: Reddit falls back to search-result snippets.
+    reddit_archive: bool = True
     websearch: bool = True
+    course_pages: bool = True  # lecturers' official pages on nus.edu.sg
+    blogs: bool = True  # seniors' write-ups on github.io, Medium, Substack, ...
 
 
 class LimitsConfig(BaseModel):
@@ -98,6 +103,10 @@ class LimitsConfig(BaseModel):
     max_total_chars: int = Field(120_000, ge=1000)
     max_input_tokens_per_report: int = Field(60_000, ge=1000)
     cache_ttl_days: int = Field(14, ge=0)
+    # Recency: sources older than this are left out, unless fewer than
+    # min_recent_docs newer opinion sources exist. Web search is filtered the same way.
+    max_source_age_years: float = Field(4, ge=0.5, le=20)
+    min_recent_docs: int = Field(10, ge=0)
     http_timeout_s: float = Field(20.0, gt=0)
 
 

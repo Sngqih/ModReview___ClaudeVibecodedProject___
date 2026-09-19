@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
+from modreview.dates import age_years, ay_label, ay_range_label, ay_short, ay_start_year
 from modreview.llm.base import ModelInfo
 from modreview.llm.registry import make_llm_provider
 from modreview.models import Claim, ExamInfo, ReviewReport, SourceDoc
@@ -24,14 +25,21 @@ SOURCE_LABELS = {
     "nusmods": "NUSMods",
     "disqus": "NUSMods review",
     "reddit": "Reddit",
+    "course_page": "Official course page",
+    "blog": "Senior's blog",
     "web": "Web",
 }
 SOURCE_GROUPS = {
-    "nusmods": "Official",
+    "nusmods": "Official listing",
+    "course_page": "Official course pages",
     "disqus": "NUSMods reviews",
     "reddit": "Reddit r/nus",
+    "blog": "Seniors' blogs",
     "web": "Other pages",
 }
+STALE_YEARS = 2  # a claim whose newest source is older than this is greyed as possibly stale
+TIMELINE_YEARS = 5  # academic years shown in the header timeline (current + 4 before)
+RECENT_YEARS = 2  # the latest academic years drawn in the accent colour
 DIFFICULTY_LABELS = {1: "Easy", 2: "Manageable", 3: "Moderate", 4: "Hard", 5: "Very hard"}
 SENTIMENT_TONES = {
     "very positive": "good",
@@ -165,10 +173,128 @@ def grouped_sources(
     return group(cited), group(uncited)
 
 
+def _month(dt: datetime) -> str:
+    return sgt(dt, "%b %Y")
+
+
+def claim_date(claim: Claim, docs_by_id: dict[str, SourceDoc], now: datetime | None = None):
+    """When the information behind a claim is from, worked out from the docs it cites.
+
+    Returns {"label", "title", "stale", "kind"} or None. ``kind`` is "dated", "official"
+    (only the NUSMods listing or undated official pages) or "undated"."""
+    docs = [docs_by_id[i] for i in claim.source_ids if i in docs_by_id]
+    if not docs:
+        return None
+    dated = [d for d in docs if d.published_at is not None and d.source != "nusmods"]
+    if not dated:
+        if all(d.source in ("nusmods", "course_page") for d in docs):
+            return {
+                "label": "official",
+                "title": "From the official listing or course page (current run)",
+                "stale": False,
+                "kind": "official",
+            }
+        return {
+            "label": "undated",
+            "title": "The sources behind this point carry no date",
+            "stale": False,
+            "kind": "undated",
+        }
+    dates = [d.published_at for d in dated]
+    newest, oldest = max(dates), min(dates)
+    label = ay_range_label(dates) or ""
+    span = (
+        _month(newest)
+        if _month(newest) == _month(oldest)
+        else f"{_month(oldest)} to {_month(newest)}"
+    )
+    title = f"Based on sources from {span}"
+    if all(d.date_estimated for d in dated):
+        label = "~" + label
+        title += " (dates estimated from the text)"
+    stale = age_years(newest, now) > STALE_YEARS
+    if stale:
+        title += f". Newest source is over {STALE_YEARS} years old, so this may be out of date."
+    return {"label": label, "title": title, "stale": stale, "kind": "dated"}
+
+
+def source_timeline(result: ReviewResult, now: datetime | None = None) -> dict:
+    """Counts of the opinion sources used per academic year, for the header chart."""
+    now = now or datetime.now(UTC)
+    current = ay_start_year(now)
+    years = list(range(current - TIMELINE_YEARS + 1, current + 1))
+    counts = dict.fromkeys(years, 0)
+    older = undated = estimated = 0
+    newest: datetime | None = None
+    for d in result.docs:
+        if d.source == "nusmods":
+            continue
+        if d.published_at is None:
+            undated += 1
+            continue
+        estimated += d.date_estimated
+        y = ay_start_year(d.published_at)
+        if y in counts:
+            counts[y] += 1
+        elif y < years[0]:
+            older += 1
+        newest = d.published_at if newest is None or d.published_at > newest else newest
+    top = max([*counts.values(), older, 1])
+    bars = [
+        {
+            "label": ay_short(y),
+            "full": f"AY{ay_short(y)}",
+            "count": counts[y],
+            "pct": round(counts[y] / top * 100),
+            "recent": y > current - RECENT_YEARS,
+            "current": y == current,
+        }
+        for y in years
+    ]
+    if older:
+        bars.insert(
+            0,
+            {"label": "older", "full": f"Before AY{ay_short(years[0])}", "count": older,
+             "pct": round(older / top * 100), "recent": False, "current": False},
+        )  # fmt: skip
+    recent_total = sum(b["count"] for b in bars if b["recent"])
+    dated_total = sum(b["count"] for b in bars)
+    return {
+        "bars": bars,
+        "undated": undated,
+        "estimated": estimated,
+        "newest": newest,
+        "newest_label": ay_label(newest, with_sem=True) if newest else None,
+        "recent_share": round(recent_total / dated_total * 100) if dated_total else 0,
+        "too_old": result.docs_too_old,
+        "current_label": f"AY{ay_short(current)}",
+    }
+
+
+def docs_map(result: ReviewResult) -> dict[str, SourceDoc]:
+    return {d.id: d for d in result.docs}
+
+
 def cite_tip(doc: SourceDoc) -> str:
     title = doc.title or host(doc.url)
-    when = sgt(doc.published_at, "%d %b %Y") if doc.published_at else "undated"
+    if doc.published_at:
+        when = ("about " if doc.date_estimated else "") + (
+            ay_label(doc.published_at, with_sem=True)
+            if doc.date_estimated
+            else sgt(doc.published_at, "%d %b %Y")
+        )
+    else:
+        when = "undated"
     return f"{title} · {when}"
+
+
+def doc_period(doc: SourceDoc) -> str:
+    """'12 May 2025 · AY24/25 S2', 'about AY24/25 S1 (estimated)', or 'undated'."""
+    if doc.published_at is None:
+        return "undated"
+    if doc.date_estimated:
+        return f"about {ay_label(doc.published_at)} (estimated from the text)"
+    return f"{sgt(doc.published_at, '%d %b %Y')} · {ay_label(doc.published_at, with_sem=True)}"
 
 
 # --------------------------------------------------------------------------- model catalog
@@ -279,10 +405,14 @@ def register_template_helpers(env) -> None:
         cite_tip=cite_tip,
         safe_url=safe_url,
         sem_label=sem_label,
+        doc_period=doc_period,
         tidy_req=tidy_requirement,
     )
     env.globals.update(
         SOURCE_LABELS=SOURCE_LABELS,
         REPORT_SECTIONS=REPORT_SECTIONS,
         workload_rows=workload_rows,
+        claim_date=claim_date,
+        source_timeline=source_timeline,
+        docs_map=docs_map,
     )

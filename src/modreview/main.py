@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response, Streamin
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from modreview import __version__
 from modreview.cache import ReviewCache, cache_key
@@ -142,6 +143,7 @@ def create_app(
             "cited_count": sum(len(g[1]) for g in cited_groups),
             "uncited_count": sum(len(g[1]) for g in uncited_groups),
             "cache_key": key,
+            "max_age_years": store.config.limits.max_source_age_years,
             "regenerate_url": review_url(result.module_code, result.model, force=True),
             "export_url": f"/export?{urlencode({'key': key})}" if key else None,
         }
@@ -411,13 +413,19 @@ def create_app(
                         nusmods=True,
                         disqus="src_disqus" in form,
                         reddit="src_reddit" in form,
+                        reddit_archive="src_reddit_archive" in form,
                         websearch="src_websearch" in form,
+                        course_pages="src_course_pages" in form,
+                        blogs="src_blogs" in form,
                     ).model_dump(),
                     "limits": LimitsConfig.model_validate(
                         {
                             **cfg.limits.model_dump(),
                             "cache_ttl_days": int(
                                 form.get("cache_ttl_days") or cfg.limits.cache_ttl_days
+                            ),
+                            "max_source_age_years": float(
+                                form.get("max_source_age_years") or cfg.limits.max_source_age_years
                             ),
                         }
                     ).model_dump(),
@@ -467,6 +475,18 @@ def create_app(
         except Exception as exc:
             message = str(exc)[:300] or type(exc).__name__
         return render(request, "partials/test_result.html", {"ok": ok, "message": message})
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request: Request, exc: StarletteHTTPException):
+        """Branded pages for unknown URLs and other HTTP errors instead of raw JSON."""
+        if exc.status_code == 404:
+            ctx = {
+                "title": "Page not found",
+                "message": "There is nothing at this address. Search for a module instead.",
+            }
+        else:
+            ctx = {"title": f"Error {exc.status_code}", "message": str(exc.detail)}
+        return render(request, "error.html", ctx, exc.status_code)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:

@@ -29,6 +29,7 @@ class ReviewResult(BaseModel):
     generated_at: datetime
     from_cache: bool = False
     docs_collected: int = 0
+    docs_too_old: int = 0  # left out by the recency cutoff
     prompt_chars: int = 0
     dropped_citations: int = 0
     # Set when there is no report: "no student opinions found", or the LLM error message.

@@ -1,6 +1,7 @@
-{% from "macros.html" import icon, sentiment, meter %}
+{% from "macros.html" import icon, sentiment, meter, date_tag %}
 {% set f = result.facts %}
 {% set r = result.report %}
+{% set docs_by_id = docs_map(result) %}
 {#- Exactly 8 cells: the compare grid lines them up across both columns with subgrid. -#}
 <div class="compare__cell compare__head">
   <p class="eyebrow">{{ f.module_code }} · {{ f.module_credit }} MCs{% if f.faculty %} · {{ f.faculty }}{% endif %}</p>
@@ -33,7 +34,7 @@
   </ul>
   {% else %}<p class="muted">No official hours listed.</p>{% endif %}
   {% if r and r.workload_summary %}
-  <ul class="claims claims--compact">{% for c in r.workload_summary[:2] %}<li>{{ c.text }}</li>{% endfor %}</ul>
+  <ul class="claims claims--compact">{% for c in r.workload_summary[:2] %}<li>{{ c.text }} {{ date_tag(c, docs_by_id) }}</li>{% endfor %}</ul>
   {% endif %}
 </div>
 
@@ -42,7 +43,7 @@
   <p class="compare__label">{{ label }}</p>
   {% set items = r[attr] if r else [] %}
   {% if items %}
-  <ul class="claims claims--compact">{% for c in items[:3] %}<li>{{ c.text }}</li>{% endfor %}</ul>
+  <ul class="claims claims--compact">{% for c in items[:3] %}<li>{{ c.text }} {{ date_tag(c, docs_by_id) }}</li>{% endfor %}</ul>
   {% if items|length > 3 %}<p class="muted small">{{ items|length - 3 }} more in the full report.</p>{% endif %}
   {% else %}
   <p class="muted">Nothing reported.</p>

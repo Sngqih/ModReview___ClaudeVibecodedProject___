@@ -3,18 +3,20 @@
 {% set r = result.report %}
 <article class="report">
   <header class="report-head" data-reveal>
+    <div class="report-head__text">
     <p class="eyebrow">{{ f.module_code }} · {{ f.module_credit }} MCs{% if f.faculty %} · {{ f.faculty }}{% endif %}{% if f.department and f.department != f.faculty %} · {{ f.department }}{% endif %}</p>
     <h1 class="report-title">{{ f.title }}</h1>
     {% if r %}
     <div class="badges">
       {{ sentiment(r.overall_sentiment) }}
       <span class="difficulty">{{ meter(r.difficulty) }}<span>{{ r.difficulty|difficulty_label }}</span></span>
-      <span class="pill pill--quiet">{{ r.confidence }} confidence</span>
-      {% if result.from_cache %}<span class="pill pill--quiet">Cached</span>{% endif %}
+      <span class="badges__meta">{{ r.confidence|capitalize }} confidence{% if result.from_cache %}, saved report{% endif %}</span>
     </div>
     <blockquote class="verdict">{{ r.one_line_verdict }}</blockquote>
     <p class="freshness">{{ r.data_freshness }}</p>
     {% endif %}
+    </div>
+    {% include "partials/timeline.html" %}
   </header>
 
   {% if result.llm_error %}
@@ -146,7 +148,7 @@
       <div><dt>Generated</dt><dd>{{ result.generated_at|sgt }} SGT</dd></div>
     </dl>
     <div class="report-foot__actions">
-      <a class="btn btn--ghost" href="/compare?a={{ f.module_code }}">Compare</a>
+      <a class="text-link" href="/compare?a={{ f.module_code }}">Compare with another module</a>
       <a class="btn btn--ghost" href="{{ regenerate_url }}">{{ icon('refresh') }}Regenerate</a>
       {% if export_url %}<a class="btn btn--primary" href="{{ export_url }}" download>{{ icon('download') }}Download as Markdown</a>{% endif %}
     </div>

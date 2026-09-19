@@ -12,11 +12,17 @@
 </span>
 {%- endmacro %}
 
+{% macro date_tag(c, docs_by_id) -%}
+{%- set dt = claim_date(c, docs_by_id) -%}
+{%- if dt %}<span class="claim-date claim-date--{{ dt.kind }}{{ ' is-stale' if dt.stale }}" title="{{ dt.title }}"><span class="visually-hidden">Information from </span>{{ dt.label }}{% if dt.stale %}<span class="claim-date__old"> · older</span><span class="visually-hidden">, possibly out of date</span>{% endif %}</span>{% endif -%}
+{%- endmacro %}
+
 {% macro claims(items, numbers, docs_by_id) -%}
 <ul class="claims">
   {%- for c in items %}
   <li>{{ c.text }}
     {%- for sid in c.source_ids %}{% set d = docs_by_id.get(sid) %}{% if d %}<a class="cite" href="#src-{{ numbers[sid] }}" data-tip="{{ d|cite_tip }}" aria-label="Source {{ numbers[sid] }}: {{ d|cite_tip }}">{{ numbers[sid] }}</a>{% endif %}{% endfor -%}
+    {{ date_tag(c, docs_by_id) }}
   </li>
   {%- endfor %}
 </ul>
@@ -27,7 +33,7 @@
   <span class="source__num">{{ numbers[d.id] }}</span>
   <div class="source__body">
     <a class="source__title" href="{{ d.url|safe_url }}" target="_blank" rel="noopener noreferrer">{{ d.title or (d.url|host) }}{{ icon('arrow', 'icon--sm') }}</a>
-    <p class="source__meta">{{ SOURCE_LABELS[d.source] }} · {{ d.published_at|sgt('%d %b %Y') if d.published_at else 'undated' }}{% if d.score %} · {{ d.score }} point{{ 's' if d.score != 1 }}{% endif %} · {{ d.url|host }}</p>
+    <p class="source__meta">{{ SOURCE_LABELS[d.source] }} · {{ d|doc_period }}{% if d.score %} · {{ d.score }} point{{ 's' if d.score != 1 }}{% endif %} · {{ d.url|host }}</p>
     <p class="source__excerpt">{{ d.text|excerpt }}</p>
   </div>
 </li>

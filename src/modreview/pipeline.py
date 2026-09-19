@@ -14,7 +14,13 @@ from pathlib import Path
 import httpx
 
 from modreview.cache import ReviewCache
-from modreview.clean import clean_docs, enforce_citations, select_docs
+from modreview.clean import (
+    apply_recency,
+    clean_docs,
+    enforce_citations,
+    estimate_dates,
+    select_docs,
+)
 from modreview.http import make_client
 from modreview.llm.base import LLMError, LLMProvider
 from modreview.llm.prompt import PROMPT_VERSION, build_user_message, load_system_prompt
@@ -132,6 +138,8 @@ SOURCE_LABELS = {
     "disqus": ("NUSMods reviews", "reviews"),
     "reddit": ("Reddit", "threads"),
     "web": ("Web", "pages"),
+    "course_page": ("Official course pages", "pages"),
+    "blog": ("Seniors' blogs", "posts"),
 }
 
 
@@ -232,13 +240,17 @@ async def run_review(
 
     statuses = [r.status for r in results]
     collected = all_docs(results)
-    docs = clean_docs(collected, config.limits.max_chars_per_doc)
+    docs = estimate_dates(clean_docs(collected, config.limits.max_chars_per_doc))
+    docs, too_old = apply_recency(
+        docs, config.limits.max_source_age_years, config.limits.min_recent_docs
+    )
     base = {
         "module_code": code,
         "facts": facts,
         "statuses": statuses,
         "generated_at": datetime.now(UTC),
         "docs_collected": len(collected),
+        "docs_too_old": too_old,
         "prompt_version": PROMPT_VERSION,
     }
     log.debug(

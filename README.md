@@ -34,8 +34,8 @@ Flags: `--debug` (source counts and prompt size), `--port N`, `--no-browser`.
 ## Using it
 
 - **Search**: type a code or part of a title and press Enter. Press `/` anywhere to jump to the search box. A report takes 20 to 40 seconds the first time and is reused for 14 days.
-- **Report**: every point has small numbers; hover one to see the source, click it to jump to the source list. The right-hand panel is the official NUSMods data. Regenerate rebuilds the report; Download saves it as Markdown.
-- **Settings**: change the model, fallback model, search provider, sources and cache lifetime. Changes apply to the next report without a restart. Keys are only shown as set or missing.
+- **Report**: every point has small numbers; hover one to see the source, click it to jump to the source list. The grey tag after each point says which academic years its information is from (a "~" means the date was estimated from the text; "older" means the newest source is over two years old). The chart at the top shows how many sources came from each academic year. The right-hand panel is the official NUSMods data. Regenerate rebuilds the report; Download saves it as Markdown, dates included.
+- **Settings**: change the model, fallback model, search provider, sources (including the Reddit archive, official course pages and seniors' blogs), how old a source may be, and the cache lifetime. Changes apply to the next report without a restart. Keys are only shown as set or missing.
 - **Compare**: pick two modules to see verdict, difficulty, official workload and the main points side by side. A module without a saved report is built on the spot; both can build at once. The Compare button on a report pre-fills it.
 - **History**: every saved report, with download and delete.
 
@@ -60,7 +60,7 @@ Runs the whole pipeline and prints the report JSON. A second run within 14 days 
 ## Notes for this laptop
 
 - TLS is re-signed by local security software, so uv uses the Windows certificate store (`[tool.uv] system-certs`) and the app builds its SSL context from the Windows store too.
-- Reddit's public `.json` endpoint answers 403 here, so the Reddit source uses search snippets.
+- Reddit's public `.json` endpoint answers 403 here. r/nus threads come from the Arctic Shift archive instead (full, dated threads and comments); if the archive is down, the app falls back to search snippets. The archive is a free third-party service and can be slow, so a new report takes about a minute.
 
 ## Development
 

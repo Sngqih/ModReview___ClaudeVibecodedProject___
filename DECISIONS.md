@@ -196,3 +196,39 @@ Bugs found while taking screenshots, fixed
 - **Stale scripts after an update.** Static URLs were versioned by the app version, which does not change between edits. They now carry the newest static file's modification time.
 
 M6 accepted 2026-09-19: `pytest` 124 passed, `ruff` clean, compare checked live (rows aligned to the pixel), screenshots reviewed.
+
+## More sources, recency first, design audit (2026-09-19/20)
+
+Owner's request: find more places seniors write about modules, prioritise recent information and show on the page when each piece of information is from, then check the design with the downloaded design skill.
+
+### Source ideas tested live (2026-09-19)
+
+| Idea | Result | Decision |
+|---|---|---|
+| Reddit via Arctic Shift archive | Full dated r/nus threads, comment trees and scores; comments 4 days old | **Built** (owner's choice), with a Settings toggle |
+| Official course pages (nus.edu.sg) | Lecturers' pages with current assessment weights, e.g. Prof Halim's CS2040S page (35K chars, dated Jul 2026) | **Built** |
+| Seniors' blogs (github.io, Medium, Substack, ...) | TA and student write-ups found by targeted search | **Built** |
+| NUSWhispers public API | Dated confessions with likes, but mostly questions; newest CS2040S match from 2024 | Not built (weak on recency) |
+| Tavily `include_raw_content` / extract for Reddit | No text for reddit.com; extract fails | Not usable |
+| Tavily `start_date` | Works as a recency filter, but general results carry no publish date | **Used** for general and blog queries |
+| HardwareZone, Telegram (t.me) | Nothing relevant | Dropped |
+| GitHub repos | Notes and code, not opinions | Dropped |
+
+### Decisions
+
+- **Arctic Shift is a third-party archive of Reddit data**, not Reddit's API. The owner accepted the grey-zone trade-off; it is used politely (few calls, 1 s gaps, at most 2 in flight, stops on the first 429), can be switched off in Settings, and falls back to search snippets.
+- **Archive behaviour learned live**: its full-text search times out ("Timeout. Maybe slow down a bit", HTTP 422) on wide date ranges and its title search failed repeatedly. So comments are searched **one academic year at a time** (newest first, two at once, 25 s budget); threads come from those comments' ids plus r/nus links from web search, fetched in one `posts/ids` call; threads whose title names the module are read in full (`comments/tree`); other mentions become per-thread "comments on CODE" documents dated by their newest comment. A new report now takes about a minute (was about 25 s); the progress text says so.
+- **Web search classifies by host**: nus.edu.sg -> `course_page` (always fetched in full, no date filter since such pages are rarely dated), blog hosts -> `blog`, the rest `web`. Two extra queries per report (about 2 more Tavily credits).
+- **Recency**: ranking uses half-year (semester) buckets instead of years. Opinion sources older than `max_source_age_years` (4) are dropped unless fewer than `min_recent_docs` (10) newer ones remain. Undated pages get a date estimated from the newest academic year they mention ("AY24/25"), marked `date_estimated`. Search and archive queries use the same window.
+- **Prompt v2** (`summarise_v2`): each doc carries `period="AY25/26 S2"` (and `date_estimated`), the message states today's academic year, and the rules tell the model to build from the latest two years and name the semester when relying on older material. The version bump retires v1 reports from the cache; they stay in History.
+- **Dates on the page**: every claim gets a tag computed from the docs it cites (not from the model): `AY24/25-25/26`, `~AY24/25` when estimated, `official` for the NUSMods listing or course pages, and a visible "older" marker when the newest source is over 2 years old. The report header has a "Sources by academic year" column chart (last 5 AYs + older), recent 2 AYs in the accent. Built per the dataviz skill: one series (no legend, a colour key instead), columns <= 24 px with 4 px rounded tops, value on each cap, whole column as hover target, and a visually hidden table. Colours validated: contrast >= 3:1 and CVD separation pass in light and dark (the grey is a deliberate de-emphasis hue, so the categorical lightness/chroma checks do not apply).
+- **Dates normalised to UTC in `SourceDoc`**: live data mixed naive (trafilatura) and aware (Reddit, Disqus) datetimes, which crashed the timeline (regression test added). Normalising in the model also repairs cached reports on load.
+- **Tests never reach the archive**: an autouse fixture blocks it unless a test is marked `archive`, and those use respx. (An early run hit the real service from tests; caught by the suite's runtime jumping to 77 s.)
+
+### Design audit (redesign-existing-projects skill)
+
+Fixed: orphaned heading words (`text-wrap: balance/pretty`); cool text grey on warm paper (text `#2F3437` -> `#34312C`, hairlines warmed); plain black shadows (warm tokens); flat surfaces (fixed grain layer at 3.5% opacity); `100vh` (-> `100dvh`); unaligned tile footers (pinned to the bottom); nine all-caps mono labels (sentence case, caps kept for page eyebrows and sentiment pills); outlined "confidence"/"cached" pills (plain text); two outline buttons in the report footer (Compare is now a text link); spinner-only loading (report-shaped skeleton, still for reduced motion); raw JSON 404 (branded page); instant anchor jumps (smooth scroll, off for reduced motion); ad hoc z-index values (token scale); missing description/theme-color meta.
+
+Kept deliberately: bordered white cards (the minimalist-ui spec the owner chose), system light/dark (no toggle). Not applicable: legal links and cookie consent (local single-user app).
+
+Checks 2026-09-20: `pytest` 155 passed, `ruff` clean; live CS2040S report: 82 docs collected, 63 used after cleaning and the 4-year cutoff (19 older left out), 0 citations dropped, 52 s end to end.

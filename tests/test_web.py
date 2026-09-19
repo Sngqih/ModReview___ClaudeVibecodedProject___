@@ -80,7 +80,7 @@ def test_review_page_streams_then_serves_cache(client: TestClient, runner_calls)
     assert runner_calls == [{"code": "CS2040S", "model": None, "force": False}]
 
     cached = client.get("/review/CS2040S")
-    assert "data-stream" not in cached.text and "Cached" in cached.text
+    assert "data-stream" not in cached.text and "saved report" in cached.text
     assert len(runner_calls) == 1
 
 
@@ -233,3 +233,9 @@ def test_settings_test_connection_without_keys(client: TestClient) -> None:
     assert "OPENAI_COMPAT_BASE_URL not set" in r.text and "test-result--bad" in r.text
     r = client.post("/settings/test", data={"kind": "search", "search_provider": "tavily"})
     assert "TAVILY_API_KEY not set" in r.text
+
+
+def test_unknown_url_gets_branded_404(client: TestClient) -> None:
+    r = client.get("/no/such/page")
+    assert r.status_code == 404 and "Page not found" in r.text and "ModReview" in r.text
+    assert "detail" not in r.text

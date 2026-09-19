@@ -10,6 +10,7 @@ from modreview.settings import AppConfig, Secrets
 from modreview.sources.base import SourceContext, SourceUnavailable
 from modreview.sources.websearch import (
     WebSearchSource,
+    classify,
     extract_page,
     is_excluded,
     mentions_code,
@@ -43,9 +44,17 @@ def test_helpers() -> None:
     assert mentions_code("took cs2040s last sem", "CS2040S")
     assert not mentions_code("CS2040 is different", "CS2040S")
     assert not mentions_code("XCS2040S", "CS2040S")
-    qs = queries_for("CS2040S", "Data Structures and Algorithms")
-    assert len(qs) == 3 and '"Data Structures and Algorithms"' in qs[1]
-    assert len(queries_for("CS2040S", None)) == 2
+    plans = queries_for("CS2040S", "Data Structures and Algorithms")
+    assert len(plans) == 5 and '"Data Structures and Algorithms"' in plans[1].query
+    official, blogs = plans[3], plans[4]
+    assert official.include_domains == ("nus.edu.sg",) and not official.dated
+    assert "github.io" in blogs.include_domains and blogs.dated
+    assert len(queries_for("CS2040S", None)) == 4
+    assert len(queries_for("CS2040S", None, course_pages=False, blogs=False)) == 2
+    assert classify("https://www.comp.nus.edu.sg/~stevenha/cs2040s.html") == "course_page"
+    assert classify("https://chrisjwelly.github.io/blog/cs2040s") == "blog"
+    assert classify("https://medium.com/@x/cs2040s") == "blog"
+    assert classify("https://example.com/cs2040s") == "web"
 
 
 def test_extract_page_pulls_article_not_nav() -> None:
@@ -95,13 +104,35 @@ async def test_fetch_filters_and_extracts() -> None:
         docs = await src.fetch("CS2040S", "Data Structures and Algorithms")
 
     assert [d.url for d in docs] == [BLOG, NUS]
+    assert [d.source for d in docs] == ["web", "course_page"]
     assert docs[0].text == LONG_CONTENT and docs[0].title == "Review"
     assert "heaviest module" in docs[1].text and docs[1].author == "Blogger Tan"
     assert nus_route.call_count == 1
     assert blog_route.call_count == 0 and pdf_route.call_count == 0
     assert nusmods_route.call_count == 0
-    assert src.note and "skipped" in src.note
-    assert all("nusmods.com" in c["exclude_domains"] for c in search.calls)
+    assert src.note and "1 official" in src.note and "skipped" in src.note
+    general = [c for c in search.calls if not c["include_domains"]]
+    targeted = [c for c in search.calls if c["include_domains"]]
+    assert len(general) == 3 and len(targeted) == 2
+    assert all("nusmods.com" in c["exclude_domains"] for c in general)
+    assert all(c["start_date"] for c in general)  # recency window applied
+    official = next(c for c in targeted if c["include_domains"] == ["nus.edu.sg"])
+    assert official["start_date"] is None  # official pages are rarely dated
+
+
+@respx.mock
+async def test_course_page_fetched_in_full_even_with_long_excerpt() -> None:
+    """Official pages keep their assessment tables below the fold, so they are always read."""
+    hit = SearchHit(url=NUS, title="Outline", snippet="s", content="CS2040S outline " * 20)
+    route = respx.get(NUS).mock(
+        return_value=httpx.Response(
+            200, text=load_text("web_page.html"), headers={"content-type": "text/html"}
+        )
+    )
+    async with make_client() as client:
+        docs = await WebSearchSource(_ctx(client, FakeSearch([hit]))).fetch("CS2040S", None)
+    assert route.call_count == 1 and docs[0].source == "course_page"
+    assert "heaviest module" in docs[0].text
 
 
 async def test_all_queries_failing_raises() -> None:

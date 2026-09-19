@@ -7,15 +7,19 @@ import html
 import re
 from datetime import UTC, datetime
 
+from modreview.dates import age_years, infer_date_from_text
 from modreview.models import Claim, LecturerNote, ReviewReport, SourceDoc
 
-# Owner's choice: after recency and score, Disqus beats Reddit beats Web.
-SOURCE_PRIORITY = {"nusmods": 0, "disqus": 1, "reddit": 2, "web": 3}
-# Undated docs (most web pages) rank as if they were about three years old.
+# Owner's choice: after recency and score, Disqus beats Reddit beats the web. Official
+# course pages and seniors' blogs sit between Reddit and general web pages.
+SOURCE_PRIORITY = {"nusmods": 0, "disqus": 1, "reddit": 2, "course_page": 3, "blog": 4, "web": 5}
+OPINION_SOURCES = ("disqus", "reddit", "course_page", "blog", "web")
+# Undated docs rank as if they were three years old (six half-year buckets).
 UNDATED_AGE_YEARS = 3
 # Budget pass 1 keeps this many of the best docs from each opinion source, so one prolific
 # source (97 Disqus reviews for MA1521) cannot crowd Reddit and the web out entirely.
 PER_SOURCE_FLOOR = 3
+PER_SOURCE_FLOOR_SMALL = 2  # course pages and blogs: fewer, longer documents
 TRUNCATION_MARK = " [...]"
 
 _WS_RE = re.compile(r"[ \t ]+")
@@ -81,19 +85,61 @@ def clean_docs(docs: list[SourceDoc], max_chars_per_doc: int) -> list[SourceDoc]
     return out
 
 
+# --------------------------------------------------------------------------- dates + recency
+
+
+def estimate_dates(docs: list[SourceDoc], now: datetime | None = None) -> list[SourceDoc]:
+    """Give undated opinion docs a date from the newest academic year their text mentions
+    ("took it in AY24/25"), marked ``date_estimated``. NUSMods facts stay undated."""
+    out = []
+    for d in docs:
+        if d.published_at is None and d.source != "nusmods":
+            guess = infer_date_from_text(d.text, now)
+            if guess is not None:
+                d = d.model_copy(update={"published_at": guess, "date_estimated": True})
+        out.append(d)
+    return out
+
+
+def apply_recency(
+    docs: list[SourceDoc],
+    max_age_years: float,
+    min_recent: int,
+    now: datetime | None = None,
+) -> tuple[list[SourceDoc], int]:
+    """Drop dated opinion docs older than ``max_age_years``, unless that would leave fewer
+    than ``min_recent`` opinion docs (then keep everything; ranking still prefers new ones).
+    Undated docs are kept. Returns (docs, how many were dropped)."""
+    now = now or datetime.now(UTC)
+
+    def too_old(d: SourceDoc) -> bool:
+        return (
+            d.source != "nusmods"
+            and d.published_at is not None
+            and age_years(d.published_at, now) > max_age_years
+        )
+
+    kept = [d for d in docs if not too_old(d)]
+    recent_opinions = sum(1 for d in kept if d.source != "nusmods")
+    if recent_opinions < min_recent:
+        return docs, 0
+    return kept, len(docs) - len(kept)
+
+
 # --------------------------------------------------------------------------- rank + budget
 
 
-def _age_years(d: SourceDoc, now: datetime) -> int:
+def _age_bucket(d: SourceDoc, now: datetime) -> int:
+    """Half-year buckets (a semester apart); undated docs count as three years old."""
     if d.published_at is None:
-        return UNDATED_AGE_YEARS
+        return UNDATED_AGE_YEARS * 2
     pub = d.published_at if d.published_at.tzinfo else d.published_at.replace(tzinfo=UTC)
-    return max(0, (now - pub).days // 365)
+    return max(0, (now - pub).days // 182)
 
 
 def rank_key(d: SourceDoc, now: datetime) -> tuple:
-    """Sort key: newer year-bucket first, then higher score, then source priority."""
-    return (_age_years(d, now), -(d.score or 0), SOURCE_PRIORITY.get(d.source, 9), d.id)
+    """Sort key: newer semester bucket first, then higher score, then source priority."""
+    return (_age_bucket(d, now), -(d.score or 0), SOURCE_PRIORITY.get(d.source, 9), d.id)
 
 
 def rank_docs(docs: list[SourceDoc], now: datetime | None = None) -> list[SourceDoc]:
@@ -124,8 +170,9 @@ def select_docs(
             chosen[d.id] = d
             used += len(d.text)
 
-    for src in ("disqus", "reddit", "web"):
-        for d in [d for d in ranked if d.source == src][:per_source_floor]:
+    for src in OPINION_SOURCES:
+        floor = per_source_floor if src in ("disqus", "reddit", "web") else PER_SOURCE_FLOOR_SMALL
+        for d in [d for d in ranked if d.source == src][:floor]:
             try_add(d)
     for d in ranked:
         try_add(d)

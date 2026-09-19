@@ -11,6 +11,20 @@ from modreview.settings import AppConfig, ConfigStore, Secrets
 from tests.helpers import load_json
 
 
+@pytest.fixture(autouse=True)
+def _no_real_reddit_archive(request, monkeypatch):
+    """No test may reach the real Arctic Shift archive. Tests marked ``archive`` mock it
+    with respx; every other test sees it as unavailable, so Reddit falls back to search."""
+    if request.node.get_closest_marker("archive"):
+        return
+    from modreview.sources import reddit
+
+    async def blocked(self, path, params):
+        raise reddit.ArchiveError("archive disabled in tests")
+
+    monkeypatch.setattr(reddit.RedditSource, "_archive_get", blocked)
+
+
 @pytest.fixture
 def config_path(tmp_path: Path) -> Path:
     p = tmp_path / "config.toml"

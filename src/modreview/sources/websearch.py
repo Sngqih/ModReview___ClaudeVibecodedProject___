@@ -1,18 +1,30 @@
-"""General web pages found through the configured ``SearchProvider``."""
+"""Web pages found through the configured ``SearchProvider``.
+
+Three kinds of page, each from its own query plan and classified by host:
+
+* ``course_page`` - lecturers' official pages on nus.edu.sg (current assessment structure).
+* ``blog``        - seniors' write-ups on blog hosts (github.io, Medium, Substack, ...).
+* ``web``         - everything else that mentions the module code.
+
+General and blog queries are limited to the recency window (``max_source_age_years``);
+official pages are not, because they are rarely dated but describe the current run.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlsplit
 
 import trafilatura
 
 from modreview.clean import strip_html
+from modreview.dates import cutoff
 from modreview.http import get_with_retry
-from modreview.models import SourceDoc
+from modreview.models import SourceDoc, SourceName
 from modreview.search.base import SearchHit
 from modreview.sources.base import SourceContext, SourceUnavailable
 
@@ -20,25 +32,70 @@ log = logging.getLogger(__name__)
 
 # nusmods.com is covered by the NUSMods + Disqus sources, reddit.com by the Reddit source.
 EXCLUDED_DOMAINS = ("nusmods.com", "reddit.com")
+OFFICIAL_DOMAINS = ("nus.edu.sg",)
+BLOG_DOMAINS = (
+    "github.io",
+    "medium.com",
+    "substack.com",
+    "wordpress.com",
+    "blogspot.com",
+    "notion.site",
+    "hashnode.dev",
+    "dev.to",
+)
 FETCH_CONCURRENCY = 4
 MIN_CONTENT_CHARS = 200
+OFFICIAL_RESULTS = 5
+BLOG_RESULTS = 6
 
 
-def queries_for(code: str, title: str | None) -> list[str]:
-    qs = [f'"{code}" NUS review']
+@dataclass(frozen=True)
+class QueryPlan:
+    query: str
+    include_domains: tuple[str, ...] = ()
+    dated: bool = True  # apply the recency window
+    max_results: int | None = None
+
+
+def queries_for(
+    code: str,
+    title: str | None,
+    *,
+    course_pages: bool = True,
+    blogs: bool = True,
+) -> list[QueryPlan]:
+    plans = [QueryPlan(f'"{code}" NUS review')]
     if title:
-        qs.append(f'"{code}" "{title}" NUS')
-    qs.append(f'"{code}" NUS workload exam')
-    return qs
+        plans.append(QueryPlan(f'"{code}" "{title}" NUS'))
+    plans.append(QueryPlan(f'"{code}" NUS workload exam'))
+    if course_pages:
+        plans.append(
+            QueryPlan(f'"{code}"', OFFICIAL_DOMAINS, dated=False, max_results=OFFICIAL_RESULTS)
+        )
+    if blogs:
+        plans.append(QueryPlan(f'"{code}" NUS', BLOG_DOMAINS, max_results=BLOG_RESULTS))
+    return plans
 
 
 def host_of(url: str) -> str:
     return (urlsplit(url).hostname or "").lower()
 
 
-def is_excluded(url: str) -> bool:
+def _on(host: str, domains: tuple[str, ...]) -> bool:
+    return any(host == d or host.endswith("." + d) for d in domains)
+
+
+def classify(url: str) -> SourceName:
     host = host_of(url)
-    return any(host == d or host.endswith("." + d) for d in EXCLUDED_DOMAINS)
+    if _on(host, OFFICIAL_DOMAINS):
+        return "course_page"
+    if _on(host, BLOG_DOMAINS):
+        return "blog"
+    return "web"
+
+
+def is_excluded(url: str) -> bool:
+    return _on(host_of(url), EXCLUDED_DOMAINS)
 
 
 def looks_like_pdf(url: str) -> bool:
@@ -91,11 +148,25 @@ class WebSearchSource:
         search = self._ctx.search
         if search is None:
             raise SourceUnavailable("no search provider configured")
-        max_results = self._ctx.config.search.max_results
+        cfg = self._ctx.config
+        max_results = cfg.search.max_results
+        since = cutoff(cfg.limits.max_source_age_years).date().isoformat()
+        plans = queries_for(
+            module_code,
+            module_title,
+            course_pages=cfg.sources.course_pages,
+            blogs=cfg.sources.blogs,
+        )
         results = await asyncio.gather(
             *(
-                search.search(q, max_results, exclude_domains=list(EXCLUDED_DOMAINS))
-                for q in queries_for(module_code, module_title)
+                search.search(
+                    p.query,
+                    p.max_results or max_results,
+                    include_domains=list(p.include_domains) or None,
+                    exclude_domains=None if p.include_domains else list(EXCLUDED_DOMAINS),
+                    start_date=since if p.dated else None,
+                )
+                for p in plans
             ),
             return_exceptions=True,
         )
@@ -115,32 +186,45 @@ class WebSearchSource:
                 hits.append(h)
         if failed and not hits:
             raise RuntimeError("all web search queries failed")
-        hits = hits[: max_results * 2]
+        hits = hits[: max_results * 3]
 
         sem = asyncio.Semaphore(FETCH_CONCURRENCY)
         docs = await asyncio.gather(*(self._to_doc(h, module_code, sem) for h in hits))
         out = [d for d in docs if d is not None]
+        kinds = {k: sum(1 for d in out if d.source == k) for k in ("course_page", "blog")}
+        parts = []
+        if kinds["course_page"]:
+            parts.append(f"{kinds['course_page']} official")
+        if kinds["blog"]:
+            parts.append(f"{kinds['blog']} blog{'s' if kinds['blog'] != 1 else ''}")
         dropped = len(hits) - len(out)
         if dropped:
-            self.note = f"{dropped} page(s) skipped (no text or no mention of {module_code})"
+            parts.append(f"{dropped} skipped (no text or no mention of {module_code})")
+        self.note = ", ".join(parts) or None
         return out
 
     async def _to_doc(self, hit: SearchHit, code: str, sem: asyncio.Semaphore) -> SourceDoc | None:
+        kind = classify(hit.url)
         # Search providers sometimes return page text with literal markup in it.
         text = strip_html(hit.content or "")
         title, author, published = hit.title, None, hit.published_at
-        if len(text) < MIN_CONTENT_CHARS:
+        # Official pages are worth a full read (assessment tables sit below the fold);
+        # other pages only when the provider's excerpt is too thin.
+        if kind == "course_page" or len(text) < MIN_CONTENT_CHARS:
             async with sem:
                 fetched = await self._fetch_text(hit.url)
-            if fetched is None:
+            if fetched is not None:
+                full, t2, author, d2 = fetched
+                if len(full) > len(text):
+                    text = full
+                title = title or t2
+                published = published or d2
+            elif len(text) < MIN_CONTENT_CHARS:
                 return None
-            text, t2, author, d2 = fetched
-            title = title or t2
-            published = published or d2
         if len(text) < MIN_CONTENT_CHARS or not mentions_code(text, code):
             return None
         return SourceDoc.make(
-            source="web",
+            source=kind,
             url=hit.url,
             title=title or host_of(hit.url),
             author=author,

@@ -62,7 +62,15 @@
       <label class="check check--row"><input type="checkbox" checked disabled><span><strong>NUSMods</strong> <span class="muted">Always on. The title and facts come from here.</span></span></label>
       <label class="check check--row"><input type="checkbox" name="src_disqus"{% if cfg.sources.disqus %} checked{% endif %}><span><strong>NUSMods reviews</strong> <span class="muted">Disqus comments on each module page.</span></span></label>
       <label class="check check--row"><input type="checkbox" name="src_reddit"{% if cfg.sources.reddit %} checked{% endif %}><span><strong>Reddit r/nus</strong> <span class="muted">Found through web search.</span></span></label>
-      <label class="check check--row"><input type="checkbox" name="src_websearch"{% if cfg.sources.websearch %} checked{% endif %}><span><strong>Other web pages</strong> <span class="muted">Blogs and posts that mention the code.</span></span></label>
+      <label class="check check--row check--sub"><input type="checkbox" name="src_reddit_archive"{% if cfg.sources.reddit_archive %} checked{% endif %}><span><strong>Full threads from the Reddit archive</strong> <span class="muted">Dated r/nus threads and comments from Arctic Shift, a free third-party archive of Reddit. Off: search snippets only.</span></span></label>
+      <label class="check check--row"><input type="checkbox" name="src_websearch"{% if cfg.sources.websearch %} checked{% endif %}><span><strong>Web pages</strong> <span class="muted">Pages found by search that mention the code.</span></span></label>
+      <label class="check check--row check--sub"><input type="checkbox" name="src_course_pages"{% if cfg.sources.course_pages %} checked{% endif %}><span><strong>Official course pages</strong> <span class="muted">Lecturers' pages on nus.edu.sg, for the current assessment structure.</span></span></label>
+      <label class="check check--row check--sub"><input type="checkbox" name="src_blogs"{% if cfg.sources.blogs %} checked{% endif %}><span><strong>Seniors' blogs</strong> <span class="muted">Write-ups on github.io, Medium, Substack and similar.</span></span></label>
+      <div class="field field--inline">
+        <label for="max_source_age_years">Leave out sources older than</label>
+        <input id="max_source_age_years" name="max_source_age_years" type="number" min="1" max="20" step="1" value="{{ cfg.limits.max_source_age_years|int }}">
+        <span class="muted">years, unless fewer than {{ cfg.limits.min_recent_docs }} newer ones exist</span>
+      </div>
       <div class="field field--inline">
         <label for="cache_ttl_days">Reuse a report for</label>
         <input id="cache_ttl_days" name="cache_ttl_days" type="number" min="0" max="365" value="{{ cfg.limits.cache_ttl_days }}">

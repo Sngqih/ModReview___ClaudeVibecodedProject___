@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from modreview.llm.base import ModelInfo, Usage
+from modreview.llm.prompt import PROMPT_VERSION
 from modreview.models import Claim, LecturerNote, ReviewReport
 from modreview.search.base import SearchHit
 
@@ -23,22 +24,36 @@ def load_text(name: str) -> str:
 class FakeSearch:
     name = "fake"
 
-    def __init__(self, hits: list[SearchHit] | None = None, *, fail: bool = False) -> None:
+    def __init__(
+        self,
+        hits: list[SearchHit] | None = None,
+        *,
+        fail: bool = False,
+        by_domain: dict[tuple, list[SearchHit]] | None = None,
+    ) -> None:
         self.hits = hits or []
         self.fail = fail
+        # Optional: different hits per include_domains tuple (() = unrestricted queries).
+        self.by_domain = by_domain
         self.calls: list[dict] = []
 
-    async def search(self, query, max_results, *, include_domains=None, exclude_domains=None):
+    async def search(
+        self, query, max_results, *, include_domains=None, exclude_domains=None, start_date=None
+    ):
         self.calls.append(
             {
                 "query": query,
                 "max_results": max_results,
                 "include_domains": include_domains,
                 "exclude_domains": exclude_domains,
+                "start_date": start_date,
             }
         )
         if self.fail:
             raise RuntimeError("search is down")
+        if self.by_domain is not None:
+            key = tuple(include_domains or ())
+            return list(self.by_domain.get(key, self.by_domain.get((), [])))
         return list(self.hits)
 
 
@@ -135,7 +150,7 @@ def make_result(code: str = "CS2040S", model: str = "gemini-flash-latest", **kw)
         "provider": "openai_compat",
         "model": model,
         "answered_by": model,
-        "prompt_version": "summarise_v1",
+        "prompt_version": PROMPT_VERSION,
         "usage": Usage(input_tokens=35057, output_tokens=3237),
         "cost_usd": 0.0,
         "generated_at": datetime(2026, 9, 19, 6, 30, tzinfo=UTC),

@@ -28,6 +28,7 @@ class TavilyProvider:
         *,
         include_domains: list[str] | None = None,
         exclude_domains: list[str] | None = None,
+        start_date: str | None = None,
     ) -> list[SearchHit]:
         body: dict = {
             "query": query,
@@ -39,6 +40,8 @@ class TavilyProvider:
             body["include_domains"] = include_domains
         if exclude_domains:
             body["exclude_domains"] = exclude_domains
+        if start_date:
+            body["start_date"] = start_date
         resp = await self._client.post(
             TAVILY_URL, json=body, headers={"Authorization": f"Bearer {self._key}"}
         )

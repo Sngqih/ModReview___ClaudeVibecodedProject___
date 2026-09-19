@@ -28,6 +28,7 @@ class SearchProvider(Protocol):
         *,
         include_domains: list[str] | None = None,
         exclude_domains: list[str] | None = None,
+        start_date: str | None = None,  # YYYY-MM-DD; providers without a filter ignore it
     ) -> list[SearchHit]: ...
 
 

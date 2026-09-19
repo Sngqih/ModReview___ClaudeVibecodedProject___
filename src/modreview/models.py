@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-SourceName = Literal["nusmods", "disqus", "reddit", "web"]
+SourceName = Literal["nusmods", "disqus", "reddit", "course_page", "blog", "web"]
 
 MODULE_CODE_RE = re.compile(r"^[A-Z]{2,4}\d{4}[A-Z]{0,3}$")
 
@@ -46,6 +46,17 @@ class SourceDoc(BaseModel):
     published_at: datetime | None = None
     text: str
     score: int | None = None
+    # True when published_at was guessed from an academic year mentioned in the text.
+    date_estimated: bool = False
+
+    @field_validator("published_at")
+    @classmethod
+    def _utc(cls, v: datetime | None) -> datetime | None:
+        """Sources mix naive dates (trafilatura) and UTC ones (Reddit, Disqus); comparing
+        the two raises, so every date is stored as UTC-aware."""
+        if v is None:
+            return None
+        return v.replace(tzinfo=UTC) if v.tzinfo is None else v.astimezone(UTC)
 
     @classmethod
     def make(cls, *, source: SourceName, url: str, text: str, chunk: str = "", **kw) -> SourceDoc:

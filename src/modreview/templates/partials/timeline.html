@@ -1,0 +1,37 @@
+{#- Sources used per academic year. One series, so no legend: the title names it.
+    Recent years (the latest two) use the accent; older years a recessive grey. Every
+    column carries its count on the cap and a year label, and a hidden table repeats
+    the data for screen readers, so nothing depends on colour or hover alone. -#}
+{% set tl = source_timeline(result) %}
+{% set dated_total = tl.bars|sum(attribute='count') %}
+{% if dated_total or tl.undated %}
+<figure class="timeline" aria-labelledby="timeline-title">
+  <figcaption class="timeline__head">
+    <span id="timeline-title" class="timeline__title">Sources by academic year</span>
+    {% if dated_total %}<span class="timeline__meta">{{ tl.recent_share }}% from the last two years{% if tl.newest_label %} · <span class="nowrap">newest {{ tl.newest_label }}</span>{% endif %}</span>{% endif %}
+    <span class="timeline__key" aria-hidden="true"><i class="is-recent"></i>last two years <i></i>earlier</span>
+  </figcaption>
+  <div class="timeline__plot" aria-hidden="true">
+    {% for b in tl.bars %}
+    <div class="timeline__col{{ ' is-recent' if b.recent }}{{ ' is-current' if b.current }}{{ ' is-zero' if not b.count }}" data-tip="{{ b.full }}: {{ b.count }} source{{ 's' if b.count != 1 }}">
+      <span class="timeline__val">{{ b.count }}</span>
+      <span class="timeline__track"><span class="timeline__bar" style="--h: {{ b.pct }}%"></span></span>
+      <span class="timeline__label">{{ b.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% set notes = [] %}
+  {% if tl.undated %}{% set _ = notes.append(tl.undated ~ ' undated') %}{% endif %}
+  {% if tl.estimated %}{% set _ = notes.append(tl.estimated ~ ' dated from the text') %}{% endif %}
+  {% if tl.too_old %}{% set _ = notes.append(tl.too_old ~ ' older than ' ~ (max_age_years|int) ~ ' years left out') %}{% endif %}
+  {% if notes %}<p class="timeline__note">{{ notes|join(' · ') }}</p>{% endif %}
+  <table class="visually-hidden">
+    <caption>Number of sources used, by NUS academic year</caption>
+    <thead><tr><th scope="col">Academic year</th><th scope="col">Sources</th></tr></thead>
+    <tbody>
+      {% for b in tl.bars %}<tr><th scope="row">{{ b.full }}</th><td>{{ b.count }}</td></tr>{% endfor %}
+      {% if tl.undated %}<tr><th scope="row">Undated</th><td>{{ tl.undated }}</td></tr>{% endif %}
+    </tbody>
+  </table>
+</figure>
+{% endif %}
