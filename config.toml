@@ -1,12 +1,12 @@
 [llm]
-provider = "anthropic"                    # key in llm/registry.py
-model = "claude-haiku-4-5-20251001"       # any model ID the provider accepts
-max_output_tokens = 4000
+provider = "openai_compat"                # key in llm/registry.py: openai_compat | anthropic
+model = "gemini-flash-latest"             # any model ID the provider accepts
+max_output_tokens = 16000                 # Gemini counts thinking tokens against this
 temperature = 0.2
 
-[llm.fallback]                            # used if the primary call errors
-provider = "anthropic"
-model = "claude-sonnet-5"
+[llm.fallback]                            # used on rate limits, outages or bad output
+provider = "openai_compat"
+model = "gemini-flash-lite-latest"
 
 [search]
 provider = "tavily"                       # tavily | brave | claude_websearch | none
@@ -30,6 +30,15 @@ host = "127.0.0.1"
 port = 8765
 
 # Prices in USD per million tokens. Edit freely; unknown models show tokens only.
+# Gemini on the free tier costs nothing, so it is listed at 0.
+[pricing."gemini-flash-latest"]
+input_per_mtok = 0.0
+output_per_mtok = 0.0
+
+[pricing."gemini-flash-lite-latest"]
+input_per_mtok = 0.0
+output_per_mtok = 0.0
+
 [pricing."claude-haiku-4-5-20251001"]
 input_per_mtok = 1.0
 output_per_mtok = 5.0

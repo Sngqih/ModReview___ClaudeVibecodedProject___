@@ -1008,7 +1008,6 @@ dependencies = [
     { name = "python-multipart" },
     { name = "tomli-w" },
     { name = "trafilatura" },
-    { name = "truststore" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1037,7 +1036,6 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "tomli-w", specifier = ">=1.0" },
     { name = "trafilatura", specifier = ">=1.12" },
-    { name = "truststore", specifier = ">=0.9" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 provides-extras = ["reddit"]

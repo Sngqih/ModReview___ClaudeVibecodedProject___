@@ -67,15 +67,17 @@ class Secrets(BaseSettings):
 
 
 class LLMFallback(BaseModel):
-    provider: str = "anthropic"
-    model: str = "claude-sonnet-5"
+    provider: str = "openai_compat"
+    model: str = "gemini-flash-lite-latest"
 
 
 class LLMConfig(BaseModel):
-    provider: str = "anthropic"
-    model: str = "claude-haiku-4-5-20251001"
-    max_output_tokens: int = Field(4000, ge=256)
+    provider: str = "openai_compat"
+    model: str = "gemini-flash-latest"
+    max_output_tokens: int = Field(16000, ge=256)
     temperature: float = Field(0.2, ge=0.0, le=1.0)
+    # Sent as ``reasoning_effort`` by the openai_compat provider (Gemini: thinking level).
+    reasoning_effort: str | None = None
     fallback: LLMFallback | None = None
 
 

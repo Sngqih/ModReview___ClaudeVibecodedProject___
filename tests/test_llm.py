@@ -208,8 +208,33 @@ def test_registry() -> None:
 
 
 def test_resolve_providers_requires_key() -> None:
-    with pytest.raises(LLMPermanentError, match="ANTHROPIC_API_KEY"):
+    with pytest.raises(LLMPermanentError, match="OPENAI_COMPAT_BASE_URL"):
         resolve_providers(AppConfig(), Secrets(_env_file=None))
+    anthropic_cfg = AppConfig(llm=LLMConfig(provider="anthropic", model="claude-haiku-4-5"))
+    with pytest.raises(LLMPermanentError, match="ANTHROPIC_API_KEY"):
+        resolve_providers(anthropic_cfg, Secrets(_env_file=None))
+
+
+def test_resolve_providers_default_chain_is_gemini() -> None:
+    secrets = Secrets(
+        _env_file=None,
+        openai_compat_base_url="https://example/v1",
+        openai_compat_api_key=SecretStr("k"),
+    )
+    # The fallback comes from config.toml, so load the real one.
+    from pathlib import Path
+
+    cfg = AppConfig.load(Path(__file__).resolve().parents[1] / "config.toml")
+    chain = resolve_providers(cfg, secrets)
+    assert [(p.name, m) for p, m in chain] == [
+        ("openai_compat", "gemini-flash-latest"),
+        ("openai_compat", "gemini-flash-lite-latest"),
+    ]
+    # An explicit per-request model keeps the fallback; an explicit provider drops it.
+    assert len(resolve_providers(cfg, secrets, model_override="x")) == 2
+    assert len(resolve_providers(cfg, secrets, provider_override="openai_compat")) == 1
+    # Without [llm.fallback] there is only the primary.
+    assert len(resolve_providers(AppConfig(), secrets)) == 1
 
 
 def _cfg() -> AppConfig:

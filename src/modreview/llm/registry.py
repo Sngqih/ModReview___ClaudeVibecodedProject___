@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from modreview.llm.base import LLMProvider
-from modreview.settings import Secrets
+from modreview.settings import LLMConfig, Secrets
 
 LLM_PROVIDER_NAMES = ("anthropic", "openai_compat")
 
 
-def make_llm_provider(name: str, secrets: Secrets) -> tuple[LLMProvider | None, str | None]:
+def make_llm_provider(
+    name: str, secrets: Secrets, llm_config: LLMConfig | None = None
+) -> tuple[LLMProvider | None, str | None]:
     """Return ``(provider, None)`` or ``(None, reason)``."""
     if name == "anthropic":
         key = secrets.anthropic_api_key
@@ -20,14 +22,14 @@ def make_llm_provider(name: str, secrets: Secrets) -> tuple[LLMProvider | None, 
     if name == "openai_compat":
         if not secrets.openai_compat_base_url:
             return None, "OPENAI_COMPAT_BASE_URL not set"
-        try:
-            from modreview.llm.openai_compat import OpenAICompatProvider
-        except ImportError:
-            return None, "openai_compat provider is not built yet (M6)"
+        from modreview.llm.openai_compat import OpenAICompatProvider
+
         key = secrets.openai_compat_api_key
         return (
             OpenAICompatProvider(
-                secrets.openai_compat_base_url, key.get_secret_value() if key else None
+                secrets.openai_compat_base_url,
+                key.get_secret_value() if key else None,
+                reasoning_effort=llm_config.reasoning_effort if llm_config else None,
             ),
             None,
         )

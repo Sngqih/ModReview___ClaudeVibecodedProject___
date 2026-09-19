@@ -7,7 +7,7 @@ def test_home_renders(client: TestClient) -> None:
     r = client.get("/")
     assert r.status_code == 200
     assert "ModReview" in r.text
-    assert "claude-haiku-4-5-20251001" in r.text
+    assert "gemini-flash-latest" in r.text
 
 
 def test_healthz(client: TestClient) -> None:

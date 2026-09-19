@@ -7,7 +7,7 @@ from modreview.settings import AppConfig, ConfigStore, LLMConfig, Secrets
 
 def test_defaults_when_missing(tmp_path: Path) -> None:
     cfg = AppConfig.load(tmp_path / "nope.toml")
-    assert cfg.llm.provider == "anthropic"
+    assert cfg.llm.provider == "openai_compat"
     assert cfg.server.host == "127.0.0.1"
 
 

@@ -15,7 +15,6 @@ dependencies = [
     "pydantic-settings>=2.3",
     "anthropic>=0.40",
     "tomli-w>=1.0",
-    "truststore>=0.9",
 ]
 
 [project.optional-dependencies]

@@ -63,7 +63,7 @@ Checklist
 - [x] Registry (`llm/registry.py`), fallback chain, usage + cost estimate from `[pricing]`
 - [x] Versioned prompt `prompts/summarise_v1.md`, `<doc>` wrapping with delimiter hardening
 - [x] Fake provider tests (no network)
-- [ ] One manual run against the real API returns a valid `ReviewReport` (pending `ANTHROPIC_API_KEY` in `.env`; run `uv run modreview fetch CS2040S --summarise`)
+- [x] One manual run against the real API returns a valid `ReviewReport` (done 2026-09-19 with Gemini instead of Anthropic, see the free-keys revision and M4)
 
 Decisions
 - **Structured output via `output_config.format` (SDK `messages.parse(output_format=Schema)`), not forced tool use.** The plan's tool-use trick relies on `tool_choice: {type: "tool"}`, which the newest Claude models reject (400). JSON-schema structured outputs are supported by every current model including Haiku 4.5, validate to the pydantic model directly, and need no tool definition. If a future provider lacks structured outputs, its own `generate_structured` can use tool use behind the same protocol.
@@ -76,4 +76,66 @@ Decisions
 - **`--summarise` flag on `modreview fetch`** exists for the manual real-API check and prints the report JSON, usage and cost.
 - **Thin evidence (owner's choice, implemented in M4):** when no opinion docs come back, the pipeline will skip the LLM and render a facts-only page.
 
-M3 checks 2026-09-17: `pytest` 73 passed, `ruff` clean. Real-API run pending the key.
+M3 checks 2026-09-17: `pytest` 73 passed, `ruff` clean. Real-API run completed 2026-09-19 (Gemini, see M4).
+
+## Free-keys revision (2026-09-19, owner's request)
+
+The owner wants free API keys only. Verified free tiers on 2026-09-19:
+- **Default LLM is now Gemini 2.5 Flash** through Google's OpenAI-compatible endpoint (`OPENAI_COMPAT_*` in `.env`). Free tier, no card. Caveat accepted: Google may use free-tier prompts for training; the inputs are public reviews.
+- **Tavily stays** as the search provider (1,000 free credits a month, about 5 per report).
+- **Disqus stays** (free public key, 1,000 calls an hour).
+- **Brave dropped as a recommendation**: its free tier ended February 2026. The provider can still be built later but is not a default.
+- **Anthropic becomes optional**: still selectable, nothing depends on it.
+- **Groq not the default**: free, but its per-minute token cap is too small for a ~40K-token prompt.
+- Consequence: `openai_compat.py` moves from M6 into M4, and `config.toml` switches `[llm]` to provider `openai_compat`, model `gemini-2.5-flash`, with fallback `gemini-2.5-flash-lite` on the same key.
+- Other owner choices for M4: rank ties Disqus > Reddit > Web; regenerate replaces the history row (one row per module + model + prompt version).
+- Building is paused until the owner has put the three keys in `.env`.
+
+## M2 live re-check (2026-09-19, with keys)
+
+| Module | NUSMods | Disqus reviews | Reddit threads | Web pages |
+|---|---|---|---|---|
+| CS2040S | 1 | 59 | 2 (snippets) | 9 |
+| CS1101S | 1 | 82 | 3 (snippets) | 10 |
+| MA1521 | 1 | 97 | 3 (snippets) | 8 |
+
+- **Disqus**: `thread:ident={CODE}` works on the first try. `thread:link=.../courses/{CODE}/reviews` returns 400 "Unable to find thread"; `thread:link=.../modules/{CODE}/reviews` returns the same thread (the thread's stored link still uses the old `/modules/` path). Selector order kept as is.
+- **Tavily**: works; raw results include irrelevant company pages, which the module-code filter drops (4-6 per module).
+- **Web**: facebook.com NUSWhispers posts appear in results but trafilatura extracts nothing (login wall), so they are skipped.
+
+## M4: Pipeline and cache
+
+Checklist
+- [x] `openai_compat` provider (moved here from M6: it is now the default via Gemini)
+- [x] Cleaning: whitespace normalisation, near-duplicate removal (normalised-text hash), truncation to `max_chars_per_doc` at a paragraph/sentence boundary
+- [x] Rank and budget: recency bucket, then score, then source priority; NUSMods facts always kept
+- [x] Cost guard: chars / 4 estimate against `max_input_tokens_per_report`, shrinking the budget until it fits
+- [x] Citation post-check drops unknown ids and claims left without citations
+- [x] SQLite cache with TTL; key = code + provider + model + prompt version
+- [x] Second request served from cache; `--force` bypasses it (verified live)
+
+Decisions
+- **Gemini model ids.** `gemini-2.5-flash` answers 404 "no longer available to new users". Defaults are the aliases `gemini-flash-latest` (primary) and `gemini-flash-lite-latest` (fallback), which Google keeps pointed at current free models. All of `gemini-flash-latest`, `gemini-3.5-flash`, `gemini-flash-lite-latest` and `gemini-3.1-flash-lite` returned valid structured output on 2026-09-19. The settings page (M5) lists every model from `/models`.
+- **Gemini "prepayment credits are depleted" 429.** Every call failed with this until the owner fixed billing on the AI Studio project. It means the project is on prepay billing with no credit, not the free tier. README tells future setups not to enable billing.
+- **Structured output on openai_compat** uses `response_format: json_schema` with every `$ref` inlined (`inline_refs`), because OpenAI-compatible servers vary in `$ref` support. Output is re-validated with pydantic and fenced JSON is tolerated; one retry carries the validation error back, as in the Anthropic provider.
+- **`max_output_tokens` raised to 16000** because Gemini counts thinking tokens against it. A real CS2040S report used about 3,200 output tokens. `[llm].reasoning_effort` exists (sent as `reasoning_effort`) but is unset by default; a Google forum thread reports that disabling thinking on 3.6-flash triggers a bogus 429.
+- **Free-tier models are priced at 0** in `[pricing]`, so the footer shows $0.00 rather than "tokens only".
+- **Dropped `truststore`** for the app's SSL. It crashed once with a native access violation (`CertFreeCertificateChain`) under Norton's TLS interception. `ssl.create_default_context()` loads the Windows ROOT/CA stores itself and verified all five hosts. One shared context per process.
+- **Budget floor per source.** Pass 1 keeps the top 3 docs from each of Disqus, Reddit and Web before filling by global rank, so 97 Disqus reviews cannot crowd out Reddit and the web. Undated docs rank as if three years old. Rank ties go Disqus > Reddit > Web (owner's choice).
+- **Near-duplicates**: first occurrence wins, and sources arrive in priority order, so a blog repost of a Disqus review keeps the Disqus copy.
+- **Cache semantics.** One row per (module, provider, requested model, prompt version); regenerate overwrites it (owner's choice), so the table doubles as History. A fallback answer is stored under the requested model so the same request hits the cache next time; `fallback_used` records it. Facts-only pages and LLM failures are not cached. `cache_ttl_days = 0` disables the cache.
+- **Failures don't raise.** `run_review` raises only for an invalid code or an unknown module. A missing LLM key, rate limit or bad output returns the facts, the sources and `llm_error`, so the page can still render.
+- **Thin evidence (owner's choice).** No opinion docs means no LLM call, and the result carries `facts_only_reason`.
+- **`modreview review CODE`** replaces `modreview fetch --summarise`. It runs the full pipeline with progress lines. The CLI forces UTF-8 output because reviewer names contain emoji and the Windows console defaults to cp1252.
+- **Retry helper** now looks up `asyncio.sleep` at call time, so tests can patch it (a test was sleeping 7 s for real).
+
+Live results 2026-09-19
+
+| Run | Docs sent / collected | Input tokens | Output tokens | Time | Notes |
+|---|---|---|---|---|---|
+| CS2040S | 74 / 74 | 35,057 | 3,237 | 23 s | 0 citations dropped |
+| CS2040S again | cached | - | - | 3 s | no model call |
+| CS2040S `--force` | 74 / 74 | 35,057 | 2,649 | 26 s | rebuilt |
+| CS1101S | 70 / 101 | 36,120 | 3,160 | ~25 s | budget trimmed 31 docs |
+
+M4 accepted 2026-09-19: `pytest` 102 passed in about 6 s, `ruff` clean.

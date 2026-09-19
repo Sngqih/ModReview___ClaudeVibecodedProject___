@@ -10,7 +10,6 @@ import ssl
 from collections.abc import Awaitable, Callable
 
 import httpx
-import truststore
 
 from modreview import USER_AGENT
 
@@ -19,10 +18,21 @@ log = logging.getLogger(__name__)
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 SleepFn = Callable[[float], Awaitable[None]]
 
+_SSL_CONTEXT: ssl.SSLContext | None = None
+
 
 def ssl_context() -> ssl.SSLContext:
-    """Trust the OS certificate store (needed when antivirus/proxy software re-signs TLS)."""
-    return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    """Trust the OS certificate store (needed when antivirus/proxy software re-signs TLS).
+
+    ``ssl.create_default_context()`` loads the Windows ROOT/CA stores on Windows and the
+    system bundle elsewhere. Built once and shared: loading the store is slow.
+    (``truststore`` was tried first but crashed with a native access violation on this
+    laptop; see DECISIONS.md.)
+    """
+    global _SSL_CONTEXT
+    if _SSL_CONTEXT is None:
+        _SSL_CONTEXT = ssl.create_default_context()
+    return _SSL_CONTEXT
 
 
 def make_client(timeout_s: float = 20.0) -> httpx.AsyncClient:
@@ -43,7 +53,7 @@ async def get_with_retry(
     headers: dict | None = None,
     retries: int = 3,
     base_delay: float = 1.0,
-    sleep: SleepFn = asyncio.sleep,
+    sleep: SleepFn | None = None,
 ) -> httpx.Response:
     """GET with exponential backoff on 429/5xx and transport errors.
 
@@ -74,7 +84,7 @@ async def get_with_retry(
             resp.status_code if resp is not None else "transport-error",
             delay,
         )
-        await sleep(delay)
+        await (sleep or asyncio.sleep)(delay)  # looked up at call time so tests can patch it
     if resp is not None:
         return resp
     assert last_exc is not None

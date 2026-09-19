@@ -42,13 +42,13 @@ def resolve_providers(
 ) -> list[tuple[LLMProvider, str]]:
     """[(provider, model)] in the order to try: primary, then fallback if configured."""
     primary_name = provider_override or config.llm.provider
-    primary, why = make_llm_provider(primary_name, secrets)
+    primary, why = make_llm_provider(primary_name, secrets, config.llm)
     if primary is None:
         raise LLMPermanentError(why or f"provider {primary_name!r} unavailable")
     chain = [(primary, model_override or config.llm.model)]
     fb = config.llm.fallback
     if fb and not provider_override and (fb.provider, fb.model) != (primary_name, chain[0][1]):
-        fallback, why = make_llm_provider(fb.provider, secrets)
+        fallback, why = make_llm_provider(fb.provider, secrets, config.llm)
         if fallback is None:
             log.info("fallback provider unavailable: %s", why)
         else:
