@@ -108,13 +108,13 @@
       {% if f.prerequisite %}
       <div class="facts__block">
         <p class="facts__label">Prerequisite</p>
-        <p class="facts__text">{{ f.prerequisite }}</p>
+        <p class="facts__text">{{ f.prerequisite|tidy_req }}</p>
       </div>
       {% endif %}
       {% if f.preclusion %}
       <div class="facts__block">
         <p class="facts__label">Preclusion</p>
-        <p class="facts__text">{{ f.preclusion }}</p>
+        <p class="facts__text">{{ f.preclusion|tidy_req }}</p>
       </div>
       {% endif %}
 
@@ -146,6 +146,7 @@
       <div><dt>Generated</dt><dd>{{ result.generated_at|sgt }} SGT</dd></div>
     </dl>
     <div class="report-foot__actions">
+      <a class="btn btn--ghost" href="/compare?a={{ f.module_code }}">Compare</a>
       <a class="btn btn--ghost" href="{{ regenerate_url }}">{{ icon('refresh') }}Regenerate</a>
       {% if export_url %}<a class="btn btn--primary" href="{{ export_url }}" download>{{ icon('download') }}Download as Markdown</a>{% endif %}
     </div>

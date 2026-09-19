@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block title %}{% if columns %}{{ a }} vs {{ b }} · {% endif %}Compare · ModReview{% endblock %}
+{% block content %}
+<header class="page-head" data-reveal>
+  <p class="eyebrow">Compare</p>
+  <h1 class="page-title">Two modules, side by side</h1>
+  <p class="muted">Verdict, difficulty, workload and the main points for each, lined up row by row. A module without a saved report is built now, and both can build at once.</p>
+</header>
+
+<form class="compare-form" action="/compare" method="get" role="search" data-reveal>
+  <label class="search__field">
+    <span class="visually-hidden">First module</span>
+    {{ icon('search') }}
+    <input type="text" name="a" value="{{ a }}" placeholder="CS2040S" list="module-options" autocomplete="off" spellcheck="false" required data-search
+           hx-get="/api/modules" hx-trigger="input changed delay:150ms" hx-target="#module-options" hx-swap="innerHTML">
+  </label>
+  <span class="compare-form__vs" aria-hidden="true">vs</span>
+  <label class="search__field">
+    <span class="visually-hidden">Second module</span>
+    {{ icon('search') }}
+    <input type="text" name="b" value="{{ b }}" placeholder="CS2040C" list="module-options" autocomplete="off" spellcheck="false" required data-search
+           hx-get="/api/modules" hx-trigger="input changed delay:150ms" hx-target="#module-options" hx-swap="innerHTML">
+  </label>
+  <datalist id="module-options"></datalist>
+  <button class="btn btn--primary btn--lg" type="submit">Compare</button>
+</form>
+{% if error %}<p class="form-error" role="alert">{{ icon('warn') }} {{ error }}</p>{% endif %}
+
+{% if columns %}
+<div class="compare">
+  {% for col in columns %}
+  <section class="compare__col" data-stream-root aria-label="{{ col.code }}">
+    {% if col.result %}
+      {% with result = col.result %}{% include "partials/compare_column.html" %}{% endwith %}
+    {% else %}
+    <div class="compare__cell progress-card progress-card--compact" data-stream="{{ col.stream_url }}">
+      <p class="eyebrow">{{ col.code }}</p>
+      <p class="progress-card__title">Building the review</p>
+      <p class="muted">No saved report yet. Summarising with <span class="mono">{{ model }}</span>, usually 20 to 40 seconds.</p>
+      <ol class="progress-list" data-progress-list aria-live="polite"></ol>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

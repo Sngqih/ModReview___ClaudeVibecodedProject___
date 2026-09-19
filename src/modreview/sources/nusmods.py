@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -47,6 +48,18 @@ def _parse_workload(raw) -> list[float] | None:
     return None
 
 
+_GLUED_LOGIC_RE = re.compile(r"(?<=[A-Za-z0-9)])(THEN|AND|OR)(?=[a-z(])")
+
+
+def tidy_requirement(text: str | None) -> str | None:
+    """NUSMods glues its logic words to neighbours ("DegreeTHEN(", "DANDmust"); space them."""
+    if not text:
+        return None
+    text = _GLUED_LOGIC_RE.sub(r" \1 ", text)
+    text = re.sub(r"\(\s+", "(", text)
+    return re.sub(r"\s{2,}", " ", text).strip()
+
+
 def _parse_dt(raw: str | None) -> datetime | None:
     if not raw:
         return None
@@ -78,8 +91,8 @@ def parse_module(data: dict, acad_year: str) -> ModuleFacts:
         department=data.get("department"),
         grading_basis=data.get("gradingBasisDescription"),
         workload=_parse_workload(data.get("workload")),
-        prerequisite=data.get("prerequisite") or None,
-        preclusion=data.get("preclusion") or None,
+        prerequisite=tidy_requirement(data.get("prerequisite")),
+        preclusion=tidy_requirement(data.get("preclusion")),
         semesters=sems,
         exams=exams,
         nusmods_url=f"https://nusmods.com/courses/{code}",

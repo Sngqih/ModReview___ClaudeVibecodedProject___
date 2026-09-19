@@ -14,6 +14,7 @@ from modreview.llm.registry import make_llm_provider
 from modreview.models import Claim, ExamInfo, ReviewReport, SourceDoc
 from modreview.review import ReviewResult
 from modreview.settings import LLMConfig, Secrets
+from modreview.sources.nusmods import tidy_requirement
 
 log = logging.getLogger(__name__)
 
@@ -278,6 +279,7 @@ def register_template_helpers(env) -> None:
         cite_tip=cite_tip,
         safe_url=safe_url,
         sem_label=sem_label,
+        tidy_req=tidy_requirement,
     )
     env.globals.update(
         SOURCE_LABELS=SOURCE_LABELS,

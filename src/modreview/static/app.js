@@ -21,10 +21,23 @@
       },
       { rootMargin: "0px 0px -40px 0px" }
     );
+    const inView = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.top < window.innerHeight && r.bottom > 0;
+    };
     els.forEach((el, i) => {
       el.style.setProperty("--index", String(i % 6));
-      io.observe(el);
+      // Content already on screen must never depend on the observer firing: some
+      // browsers throttle it (background tabs, headless), which would leave it invisible.
+      if (inView(el)) setTimeout(() => el.classList.add("is-visible"), 20);
+      else io.observe(el);
     });
+    // Safety net: anything still hidden inside the viewport after 2.5 s is shown.
+    setTimeout(() => {
+      els.forEach((el) => {
+        if (!el.classList.contains("is-visible") && inView(el)) el.classList.add("is-visible");
+      });
+    }, 2500);
   }
 
   // Press "/" anywhere to jump to the search box.
@@ -45,25 +58,35 @@
   const CODE_RE = /^\s*[A-Za-z]{2,4}\s?\d{4}[A-Za-z]{0,3}\s*$/;
 
   function initSearch() {
-    const input = document.querySelector("[data-search]");
-    if (!input || !input.form) return;
-    const form = input.form;
-    const list = document.getElementById(input.getAttribute("list"));
+    // The home page has one search box; Compare has two sharing one suggestion list.
+    const inputs = Array.from(document.querySelectorAll("[data-search]"));
+    if (!inputs.length || !inputs[0].form) return;
+    const form = inputs[0].form;
     let submitted = false;
+    const listOf = (input) => document.getElementById(input.getAttribute("list"));
 
+    inputs.forEach((input) => {
+      // Remember which box the current suggestions belong to.
+      input.addEventListener("input", () => {
+        const list = listOf(input);
+        if (list) list.dataset.for = input.name;
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" || e.isComposing) return;
+        // Let the browser apply a highlighted suggestion first, then submit if it didn't.
+        setTimeout(() => {
+          if (!submitted && input.value.trim()) form.requestSubmit();
+        }, 0);
+      });
+    });
     form.addEventListener("submit", () => {
       submitted = true;
-      if (!CODE_RE.test(input.value) && list) {
+      inputs.forEach((input) => {
+        const list = listOf(input);
+        if (CODE_RE.test(input.value) || !list || list.dataset.for !== input.name) return;
         const first = list.querySelector("option");
         if (first) input.value = first.value;
-      }
-    });
-    input.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.isComposing) return;
-      // Let the browser apply a highlighted suggestion first, then submit if it didn't.
-      setTimeout(() => {
-        if (!submitted && input.value.trim()) form.requestSubmit();
-      }, 0);
+      });
     });
   }
 
@@ -79,7 +102,9 @@
 
   function startStream(card) {
     const list = card.querySelector("[data-progress-list]");
-    const root = document.querySelector("[data-review-root]");
+    // A Compare column replaces only itself; the report page replaces the whole report area.
+    const column = card.closest("[data-stream-root]");
+    const root = column || document.querySelector("[data-review-root]");
     let finished = false;
     const es = new EventSource(card.dataset.stream);
 
@@ -99,6 +124,7 @@
       root.innerHTML = e.data;
       reveal(root);
       if (window.htmx) window.htmx.process(root);
+      if (column) return;
       // Drop ?force=1 so a reload shows the cached report instead of rebuilding it.
       const url = new URL(window.location.href);
       if (url.searchParams.has("force")) {
@@ -131,8 +157,7 @@
   function init() {
     reveal(document);
     initSearch();
-    const card = document.querySelector("[data-stream]");
-    if (card) startStream(card);
+    document.querySelectorAll("[data-stream]").forEach(startStream);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

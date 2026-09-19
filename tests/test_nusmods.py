@@ -123,3 +123,20 @@ async def test_module_list_cached_on_disk(tmp_path: Path) -> None:
     assert route.call_count == 1
     cached = json.loads((tmp_path / "moduleList_2026-2027.json").read_text())
     assert len(cached) == len(sample)
+
+
+def test_tidy_requirement_spaces_glued_logic_words() -> None:
+    from modreview.sources.nusmods import tidy_requirement
+
+    raw = (
+        "If undertaking an Undergraduate DegreeTHEN( must have completed CS1010 "
+        "at a grade of at least DANDmust have completed CS1231)"
+    )
+    assert tidy_requirement(raw) == (
+        "If undertaking an Undergraduate Degree THEN (must have completed CS1010 "
+        "at a grade of at least D AND must have completed CS1231)"
+    )
+    assert tidy_requirement("Standard ANDROID module") == "Standard ANDROID module"
+    assert tidy_requirement(None) is None and tidy_requirement("") is None
+    once = tidy_requirement(raw)
+    assert tidy_requirement(once) == once  # safe to apply again at render time

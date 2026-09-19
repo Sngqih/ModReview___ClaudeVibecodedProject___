@@ -103,6 +103,10 @@ def create_app(
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.autoescape = True  # never render scraped text raw
     templates.env.globals["app_version"] = __version__
+    # Cache-busting token for /static: changes whenever a static file changes.
+    templates.env.globals["asset_v"] = str(
+        int(max(f.stat().st_mtime for f in STATIC_DIR.iterdir() if f.is_file()))
+    )
     register_template_helpers(templates.env)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -162,9 +166,11 @@ def create_app(
         return render(request, "index.html", await home_ctx())
 
     @app.get("/api/modules", response_class=HTMLResponse)
-    async def module_suggestions(request: Request, q: str = "", code: str = ""):
-        # htmx sends the input's own name ("code"); "q" is accepted for manual use.
-        mods = await modules.search(q or code)
+    async def module_suggestions(request: Request):
+        # htmx sends the input's own name: "code" on the home page, "a"/"b" on Compare.
+        params = request.query_params
+        query = next((params[k] for k in ("q", "code", "a", "b") if params.get(k)), "")
+        mods = await modules.search(query)
         return render(request, "partials/suggestions.html", {"mods": mods})
 
     @app.get("/review")
@@ -205,7 +211,7 @@ def create_app(
         )
 
     @app.get("/review/{code}/stream")
-    async def review_stream(code: str, model: str = "", force: str = ""):
+    async def review_stream(code: str, model: str = "", force: str = "", view: str = ""):
         queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
 
         async def progress(ev: ProgressEvent) -> None:
@@ -243,7 +249,11 @@ def create_app(
                             "progress", render_str("partials/progress_item.html", {"ev": payload})
                         )
                     elif kind == "result":
-                        yield sse("done", render_str("partials/report.html", report_ctx(payload)))
+                        if view == "compare":
+                            html = render_str("partials/compare_column.html", {"result": payload})
+                        else:
+                            html = render_str("partials/report.html", report_ctx(payload))
+                        yield sse("done", html)
                         return
                     else:
                         title, message = payload
@@ -261,6 +271,36 @@ def create_app(
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
+
+    @app.get("/compare", response_class=HTMLResponse)
+    async def compare(request: Request, a: str = "", b: str = ""):
+        cfg = store.config
+        ctx: dict[str, Any] = {"nav": "compare", "a": a, "b": b, "columns": [], "error": None}
+        if not (a.strip() and b.strip()):  # empty or half-filled: show the form, prefilled
+            ctx["a"], ctx["b"] = a.strip().upper(), b.strip().upper()
+            return render(request, "compare.html", ctx)
+        try:
+            codes = [normalise_module_code(a), normalise_module_code(b)]
+        except InvalidModuleCode as exc:
+            ctx["error"] = str(exc)
+            return render(request, "compare.html", ctx, 400)
+        if codes[0] == codes[1]:
+            ctx["error"] = "Pick two different modules."
+            return render(request, "compare.html", ctx, 400)
+        for code in codes:
+            hit = cache.get(
+                code, cfg.llm.provider, cfg.llm.model, PROMPT_VERSION, cfg.limits.cache_ttl_days
+            )
+            ctx["columns"].append(
+                {
+                    "code": code,
+                    "result": hit,
+                    "stream_url": None if hit else f"/review/{code}/stream?view=compare",
+                }
+            )
+        ctx["a"], ctx["b"] = codes
+        ctx["model"] = cfg.llm.model
+        return render(request, "compare.html", ctx)
 
     @app.get("/export")
     async def export(key: str):

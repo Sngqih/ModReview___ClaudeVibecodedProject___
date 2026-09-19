@@ -172,3 +172,27 @@ Bugs found during the browser check and fixed
 - Google returned a real 503 for `gemini-flash-latest` during the MA1521 run; the fallback to `gemini-flash-lite-latest` handled it as designed.
 
 M5 accepted 2026-09-19: `pytest` 118 passed, `ruff` clean; home, live progress, report, citations, settings, test-connection, history, export, dark mode and phone width checked in the browser.
+
+## M6: Polish (stretch)
+
+Owner's scope (2026-09-19): compare view and README screenshots. Brave and Claude web search were skipped because neither is free any more; the `openai_compat` provider was already built in M4.
+
+Checklist
+- [x] Compare view `/compare?a=&b=`: cached columns render at once, uncached ones build live over the same SSE stream (`?view=compare`), both concurrently
+- [x] README screenshots (home, report, compare, settings, dark narrow)
+- [x] Tests for the compare page and column stream
+
+Decisions
+- **Rows line up with CSS subgrid.** Each column is exactly 8 cells (header, verdict, workload, assessment, complaints, tips, who should take it, link) spanning the parent's 8 rows, so row N has the same height in both columns whatever the text length. Below 960px the columns stack.
+- **Compare shows claims without citation chips**, capped at 3 per section with a "N more in the full report" note; each column links to the full report, where every claim is cited.
+- **The stream endpoint gained `view=compare`**, which renders the compact column instead of the full report. The client script now handles any number of streams on a page, and each compare column replaces only itself.
+- **Autocomplete accepts `a`/`b`** (the compare inputs' names) as well as `code`/`q`; with two boxes sharing one suggestion list, a typed title is resolved only for the box the suggestions belong to.
+- **Screenshots via headless Chrome** with a throwaway profile under the scratchpad and `--blink-settings=preferredColorScheme=1` to force light mode (the laptop's Windows theme is dark). Chrome will not size a window below about 500px, so the narrow shot is 520px wide.
+
+Bugs found while taking screenshots, fixed
+- **Content could stay invisible.** The fade-in relied on IntersectionObserver alone; headless Chrome (and the hidden preview pane) skipped the callback, leaving the page blank below the header. Content already on screen at load is now revealed by a timer, the observer handles only content further down, and a 2.5 s safety net reveals anything still hidden in view.
+- **Long course-code lists overflowed the facts panel** (and the whole page on a phone). Facts text, claims and status lines now wrap anywhere; below 560px the header splits into two rows so the four nav links fit.
+- **NUSMods glues its logic words** ("DegreeTHEN(", "DANDmust"). `tidy_requirement` spaces them at parse time, and the same filter runs at render time so reports cached before the fix display cleanly too.
+- **Stale scripts after an update.** Static URLs were versioned by the app version, which does not change between edits. They now carry the newest static file's modification time.
+
+M6 accepted 2026-09-19: `pytest` 124 passed, `ruff` clean, compare checked live (rows aligned to the pixel), screenshots reviewed.
