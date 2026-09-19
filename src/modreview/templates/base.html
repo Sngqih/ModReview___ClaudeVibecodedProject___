@@ -5,21 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}ModReview{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <script>document.documentElement.classList.add("js")</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+  <link rel="stylesheet" href="/static/style.css?v={{ app_version }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111'/%3E%3Crect x='9' y='9' width='14' height='14' rx='2' fill='%23B4532A'/%3E%3C/svg%3E">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/app.js?v={{ app_version }}" defer></script>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4L12 4Z"/><path d="M12 10v4.2"/><path d="M12 17.1v.2"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M8 16 16 8M9.5 8H16v6.5"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4.5H15"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+    </defs>
+  </svg>
+  <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
-    <a class="brand" href="/">ModReview</a>
-    <nav>
-      <a href="/">Search</a>
-      <a href="/history">History</a>
-      <a href="/settings">Settings</a>
-    </nav>
+    <div class="wrap site-header__inner">
+      <a class="brand" href="/"><span class="brand__mark" aria-hidden="true"></span>ModReview</a>
+      <nav class="nav" aria-label="Main">
+        <a href="/" {% if nav == 'search' %}aria-current="page"{% endif %}>Search</a>
+        <a href="/history" {% if nav == 'history' %}aria-current="page"{% endif %}>History</a>
+        <a href="/settings" {% if nav == 'settings' %}aria-current="page"{% endif %}>Settings</a>
+      </nav>
+    </div>
   </header>
-  <main class="page">
+  <main id="main" class="wrap page">
     {% block content %}{% endblock %}
   </main>
-  <footer class="site-footer">ModReview {{ app_version }} · runs on 127.0.0.1 only</footer>
+  <footer class="site-footer">
+    <div class="wrap site-footer__inner">
+      <span>ModReview {{ app_version }}</span>
+      <span>Runs on this laptop only. Summaries can be wrong; check the cited sources.</span>
+    </div>
+  </footer>
 </body>
 </html>

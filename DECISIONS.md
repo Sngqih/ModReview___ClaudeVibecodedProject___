@@ -139,3 +139,36 @@ Live results 2026-09-19
 | CS1101S | 70 / 101 | 36,120 | 3,160 | ~25 s | budget trimmed 31 docs |
 
 M4 accepted 2026-09-19: `pytest` 102 passed in about 6 s, `ruff` clean.
+
+## M5: UI
+
+Checklist
+- [x] Home: search with live module autocomplete, model dropdown (default = configured), ignore-cache checkbox, recent reports
+- [x] Report page with SSE progress, official facts panel with workload bars, sections in schema order, numbered citations with hover tooltips, sources grouped by type, footer with model/prompt/tokens/cost/time, Regenerate
+- [x] Settings: provider + live model list, fallback model, search provider, source toggles, cache lifetime, key presence (booleans only), Test connection per provider
+- [x] History with view, Markdown download and delete
+- [x] Light and dark mode; readable at phone width
+- [x] Markdown export
+- [x] Full flow works in the browser; a model change in Settings shows in the next report's footer without a restart (test `test_settings_change_model_applies_to_next_report`, plus manual check)
+
+Owner's design choices: editorial minimal (minimalist-ui skill), two-column report with a sticky facts panel, citation click jumps to the Sources list, cited sources first with the rest collapsed, terracotta accent.
+
+Decisions
+- **Type and colour.** Newsreader (serif headings, verdict), Geist (body), Geist Mono (metadata), from Google Fonts with system fallbacks. Warm off-white paper, `#111` ink, terracotta `#B4532A` only for citations, links, the difficulty meter and the verdict rule. Sentiment uses pale pastel pills. Dark mode swaps to warm charcoal with a peach accent. No emoji; status icons are an inline SVG sprite.
+- **Citation numbers follow reading order.** Cited docs are numbered by first appearance down the page (1, 2, 3...), then uncited docs continue the sequence, so every source has one stable number in the page and in the Markdown export.
+- **SSE is hand-rolled** (`StreamingResponse`, ~40 lines incl. client JS). The stream sends each progress line as rendered HTML, then the finished report as one `done` event that replaces the progress card. The client closes the EventSource on error, because its automatic reconnect would restart the whole pipeline. A browser that disconnects cancels the pipeline task.
+- **Pipeline injection.** `create_app(..., cache=, module_loader=, runner=)` lets tests swap the pipeline, cache and module list, so the web tests never touch the network or the real database.
+- **Search box.** Autocomplete is a native `<datalist>` filled by htmx from `/api/modules` (prefix match on code, then title substring). Enter always submits (Chrome's suggestion popup can swallow it), and a typed title resolves to the top suggestion.
+- **Settings writes `config.toml` with `tomli-w`, which drops the comments** in that file. Accepted: the Settings page explains each option, and PLAN.md documents the file.
+- **Keys are read at startup.** The Settings page says so; editing `.env` needs a restart. Values never reach templates, only `Secrets.present()` booleans.
+- **Model dropdown filter.** Non-text models (TTS, image, embedding, robotics, live, Google's deep-research and antigravity agents) are hidden. The list is cached for 10 minutes per provider.
+- **Only http(s) URLs reach an `href`** (`safe_url` filter), and every scraped string is autoescaped. Outbound links use `rel="noopener noreferrer"`.
+- **Facts-only and failed reports render** with a notice, the official facts and the collected sources; they have no export link because they are not cached.
+
+Bugs found during the browser check and fixed
+- Disqus `raw_message` still carries user-typed HTML (`<b>`, `&amp;`), which showed literally in excerpts and went to the LLM. Both Disqus and search-provider page text now go through the shared `clean.strip_html`.
+- After a fallback, the live page showed "gemini-flash-lite-latest (fallback for gemini-flash-lite-latest)" and its Markdown link 404'd, because the returned result carried the answering model instead of the requested one. `model` is now always the requested model (the cache key) and `answered_by` the model that wrote it. A regression test covers it.
+- The Settings text-input style leaked into the search box (double border), and Chrome drew a datalist arrow; both fixed.
+- Google returned a real 503 for `gemini-flash-latest` during the MA1521 run; the fallback to `gemini-flash-lite-latest` handled it as designed.
+
+M5 accepted 2026-09-19: `pytest` 118 passed, `ruff` clean; home, live progress, report, citations, settings, test-connection, history, export, dark mode and phone width checked in the browser.

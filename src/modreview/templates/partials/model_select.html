@@ -1,0 +1,8 @@
+{% if models %}
+<select name="{{ name }}" id="{{ name }}">
+  {% for m in models %}<option value="{{ m }}"{% if m == selected %} selected{% endif %}>{{ m }}</option>{% endfor %}
+</select>
+{% else %}
+<input name="{{ name }}" id="{{ name }}" type="text" value="{{ selected }}" placeholder="model id, e.g. gemini-flash-latest" spellcheck="false">
+{% endif %}
+{% if error %}<p class="hint hint--warn">Could not list models: {{ error }}</p>{% endif %}

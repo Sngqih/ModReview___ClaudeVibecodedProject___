@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 import trafilatura
 
+from modreview.clean import strip_html
 from modreview.http import get_with_retry
 from modreview.models import SourceDoc
 from modreview.search.base import SearchHit
@@ -125,7 +126,8 @@ class WebSearchSource:
         return out
 
     async def _to_doc(self, hit: SearchHit, code: str, sem: asyncio.Semaphore) -> SourceDoc | None:
-        text = (hit.content or "").strip()
+        # Search providers sometimes return page text with literal markup in it.
+        text = strip_html(hit.content or "")
         title, author, published = hit.title, None, hit.published_at
         if len(text) < MIN_CONTENT_CHARS:
             async with sem:

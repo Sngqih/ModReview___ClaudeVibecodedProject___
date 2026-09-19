@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import re
 from datetime import UTC, datetime
 
@@ -18,11 +19,22 @@ PER_SOURCE_FLOOR = 3
 TRUNCATION_MARK = " [...]"
 
 _WS_RE = re.compile(r"[ \t ]+")
+_TAG_RE = re.compile(r"<[^>]+>")
+_BLOCK_RE = re.compile(r"<\s*br\s*/?>|</p>|</div>|</li>", re.I)
 _NL_RE = re.compile(r"\n{3,}")
 _NORM_RE = re.compile(r"[^a-z0-9]+")
 
 
 # --------------------------------------------------------------------------- clean
+
+
+def strip_html(s: str) -> str:
+    """Tags out, entities decoded, line breaks kept. For user-typed or scraped markup."""
+    s = _BLOCK_RE.sub("\n", s)
+    s = _TAG_RE.sub("", s)
+    s = html.unescape(s)
+    s = re.sub(r"[ \t]+", " ", s)
+    return re.sub(r"\n{3,}", "\n\n", s).strip()
 
 
 def normalise_whitespace(text: str) -> str:

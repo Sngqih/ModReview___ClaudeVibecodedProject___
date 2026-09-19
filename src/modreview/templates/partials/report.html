@@ -1,0 +1,153 @@
+{% from "macros.html" import icon, sentiment, meter, claims, source_item %}
+{% set f = result.facts %}
+{% set r = result.report %}
+<article class="report">
+  <header class="report-head" data-reveal>
+    <p class="eyebrow">{{ f.module_code }} · {{ f.module_credit }} MCs{% if f.faculty %} · {{ f.faculty }}{% endif %}{% if f.department and f.department != f.faculty %} · {{ f.department }}{% endif %}</p>
+    <h1 class="report-title">{{ f.title }}</h1>
+    {% if r %}
+    <div class="badges">
+      {{ sentiment(r.overall_sentiment) }}
+      <span class="difficulty">{{ meter(r.difficulty) }}<span>{{ r.difficulty|difficulty_label }}</span></span>
+      <span class="pill pill--quiet">{{ r.confidence }} confidence</span>
+      {% if result.from_cache %}<span class="pill pill--quiet">Cached</span>{% endif %}
+    </div>
+    <blockquote class="verdict">{{ r.one_line_verdict }}</blockquote>
+    <p class="freshness">{{ r.data_freshness }}</p>
+    {% endif %}
+  </header>
+
+  {% if result.llm_error %}
+  <div class="notice notice--bad" role="alert" data-reveal>
+    {{ icon('warn') }}
+    <div><strong>The summary could not be written.</strong>
+      <p>{{ result.llm_error }}</p>
+      <p>The official facts and the sources that were collected are still below. <a href="{{ regenerate_url }}">Try again</a>, or change the model in <a href="/settings">Settings</a>.</p>
+    </div>
+  </div>
+  {% elif result.facts_only_reason %}
+  <div class="notice" data-reveal>
+    {{ icon('warn') }}
+    <div><strong>Not enough to summarise.</strong><p>{{ result.facts_only_reason }}</p></div>
+  </div>
+  {% endif %}
+
+  <div class="report-grid">
+    <div class="report-main">
+      {% if r %}
+        {% set ns = namespace(n=0) %}
+        {% for title, attr in REPORT_SECTIONS %}
+          {% if loop.index0 == 3 and r.lecturers_and_teaching %}
+            {% set ns.n = ns.n + 1 %}
+            <section class="report-section" data-reveal>
+              <h2><span class="report-section__num">{{ '%02d' % ns.n }}</span>Lecturers and teaching</h2>
+              {% for note in r.lecturers_and_teaching %}
+              <div class="lecturer">
+                <p class="lecturer__name">{{ note.name or 'Teaching in general' }}{% if note.semester %}<span class="lecturer__sem">{{ note.semester }}</span>{% endif %}</p>
+                {{ claims(note.notes, numbers, docs_by_id) }}
+              </div>
+              {% endfor %}
+            </section>
+          {% endif %}
+          {% set items = r[attr] %}
+          {% if items %}
+            {% set ns.n = ns.n + 1 %}
+            <section class="report-section{{ ' report-section--disagree' if attr == 'disagreements' }}" data-reveal>
+              <h2><span class="report-section__num">{{ '%02d' % ns.n }}</span>{{ title }}</h2>
+              {{ claims(items, numbers, docs_by_id) }}
+            </section>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      <section class="sources" id="sources" data-reveal>
+        <h2 class="sources__title">Sources</h2>
+        <p class="muted">{% if r %}{{ cited_count }} cited · {{ result.docs|length }} read · {{ result.docs_collected }} collected{% else %}{{ result.docs|length }} collected{% endif %}</p>
+        {% for heading, docs in cited_groups %}
+        <h3 class="sources__group">{{ heading }}</h3>
+        <ol class="source-list">{% for d in docs %}{{ source_item(d, numbers) }}{% endfor %}</ol>
+        {% endfor %}
+        {% if uncited_groups %}
+        <details class="more-sources">
+          <summary><span class="toggle" aria-hidden="true"></span>Show {{ uncited_count }} more source{{ 's' if uncited_count != 1 }} that were read but not cited</summary>
+          {% for heading, docs in uncited_groups %}
+          <h3 class="sources__group">{{ heading }}</h3>
+          <ol class="source-list">{% for d in docs %}{{ source_item(d, numbers) }}{% endfor %}</ol>
+          {% endfor %}
+        </details>
+        {% endif %}
+      </section>
+    </div>
+
+    <aside class="facts" aria-label="Official facts from NUSMods" data-reveal>
+      <p class="eyebrow">Official · NUSMods {{ f.acad_year }}</p>
+      <dl class="facts__stats">
+        <div><dt>Credits</dt><dd>{{ f.module_credit }} MCs</dd></div>
+        <div><dt>Offered</dt><dd>{% for s in f.semesters %}{{ s|sem_label }}{% if not loop.last %}, {% endif %}{% else %}Not this year{% endfor %}</dd></div>
+        {% if f.grading_basis %}<div><dt>Grading</dt><dd>{{ f.grading_basis }}</dd></div>{% endif %}
+      </dl>
+
+      {% if f.workload %}
+      <div class="facts__block">
+        <p class="facts__label">Workload <span class="mono">{{ '%g'|format(f.workload_total) }} h / week</span></p>
+        <ul class="bars">
+          {% for label, hrs, pct in workload_rows(f.workload) %}
+          <li><span class="bars__label">{{ label }}</span><span class="bars__track"><span class="bars__fill" style="--w: {{ pct }}%"></span></span><span class="bars__val mono">{{ '%g'|format(hrs) }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if f.exams %}
+      <div class="facts__block">
+        <p class="facts__label">Final exam</p>
+        <ul class="facts__list">{% for ex in f.exams %}<li><span class="mono">{{ ex.semester|sem_label }}</span> {{ ex|exam_text }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+
+      {% if f.prerequisite %}
+      <div class="facts__block">
+        <p class="facts__label">Prerequisite</p>
+        <p class="facts__text">{{ f.prerequisite }}</p>
+      </div>
+      {% endif %}
+      {% if f.preclusion %}
+      <div class="facts__block">
+        <p class="facts__label">Preclusion</p>
+        <p class="facts__text">{{ f.preclusion }}</p>
+      </div>
+      {% endif %}
+
+      <div class="facts__block">
+        <p class="facts__label">What was read</p>
+        <ul class="status-list">
+          {% for s in result.statuses %}
+          <li class="{{ 'ok' if s.ok else 'bad' }}">{{ icon('check' if s.ok else 'warn') }}<span><strong>{{ SOURCE_LABELS[s.name] }}{{ 's' if s.name == 'disqus' }}</strong> {% if s.ok %}{{ s.count }}{% if s.note %} · {{ s.note }}{% endif %}{% else %}unavailable · {{ s.error }}{% endif %}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <a class="facts__link" href="{{ f.nusmods_url }}" target="_blank" rel="noopener noreferrer">Open on NUSMods{{ icon('arrow', 'icon--sm') }}</a>
+    </aside>
+  </div>
+
+  <footer class="report-foot" data-reveal>
+    <dl class="report-foot__meta">
+      {% if result.answered_by or result.model %}
+      <div><dt>Model</dt><dd>{{ result.answered_by or result.model }}{% if result.fallback_used %} <span class="muted">(fallback for {{ result.model }})</span>{% endif %}</dd></div>
+      <div><dt>Provider</dt><dd>{{ result.provider }}</dd></div>
+      {% endif %}
+      <div><dt>Prompt</dt><dd>{{ result.prompt_version }}</dd></div>
+      {% if result.usage %}
+      <div><dt>Tokens</dt><dd>{{ result.usage.input_tokens|thousands }} in · {{ result.usage.output_tokens|thousands }} out</dd></div>
+      <div><dt>Est. cost</dt><dd>{{ result.cost_usd|money }}</dd></div>
+      {% endif %}
+      <div><dt>Documents</dt><dd>{{ result.docs|length }} of {{ result.docs_collected }}</dd></div>
+      {% if result.dropped_citations %}<div><dt>Citations removed</dt><dd>{{ result.dropped_citations }} (pointed at no source)</dd></div>{% endif %}
+      <div><dt>Generated</dt><dd>{{ result.generated_at|sgt }} SGT</dd></div>
+    </dl>
+    <div class="report-foot__actions">
+      <a class="btn btn--ghost" href="{{ regenerate_url }}">{{ icon('refresh') }}Regenerate</a>
+      {% if export_url %}<a class="btn btn--primary" href="{{ export_url }}" download>{{ icon('download') }}Download as Markdown</a>{% endif %}
+    </div>
+  </footer>
+</article>

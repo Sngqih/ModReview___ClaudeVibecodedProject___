@@ -1,0 +1,7 @@
+{% from "macros.html" import icon %}
+{%- if ev.kind == "stage" -%}
+{%- set running = ev.stage in ("fetching", "summarising") -%}
+<li class="progress-item {{ 'is-running' if running else ('is-failed' if ev.stage == 'error' else 'is-done') }}" data-kind="stage"><span class="progress-item__icon">{% if running %}<span class="spinner"></span>{% elif ev.stage == 'error' %}{{ icon('warn') }}{% else %}{{ icon('check') }}{% endif %}</span><span>{{ ev.message }}</span></li>
+{%- else -%}
+<li class="progress-item is-source {{ 'is-done' if ev.status.ok else 'is-warn' }}" data-kind="source"><span class="progress-item__icon">{{ icon('check' if ev.status.ok else 'warn') }}</span><span>{{ ev.message }}</span></li>
+{%- endif -%}

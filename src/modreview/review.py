@@ -20,7 +20,8 @@ class ReviewResult(BaseModel):
     docs: list[SourceDoc] = Field(default_factory=list)  # the docs the report may cite
     statuses: list[SourceStatus] = Field(default_factory=list)
     provider: str | None = None
-    model: str | None = None
+    model: str | None = None  # the model that was requested (part of the cache key)
+    answered_by: str | None = None  # the model that actually wrote it (differs on fallback)
     prompt_version: str = ""
     usage: Usage | None = None
     cost_usd: float | None = None

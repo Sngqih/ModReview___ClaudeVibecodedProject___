@@ -212,3 +212,32 @@ async def test_unknown_module(tmp_path: Path) -> None:
             await run_review(
                 "ZZ9999", AppConfig(), _secrets(), cache, client=client, data_dir=tmp_path
             )
+
+
+@respx.mock
+async def test_fallback_keeps_requested_model_as_cache_key(tmp_path: Path) -> None:
+    """Regression: after a fallback the footer showed the fallback twice and export 404'd."""
+    from modreview.cache import cache_key
+    from modreview.llm.base import LLMTransientError
+
+    _mock_sources()
+    cache = ReviewCache(tmp_path / "db.sqlite")
+    primary = FakeLLM(error=LLMTransientError("503"))
+    backup = CitingLLM()
+    async with make_client() as client:
+        result = await run_review(
+            "CS2040S",
+            AppConfig(),
+            _secrets(),
+            cache,
+            client=client,
+            search=FakeSearch(_hits()),
+            chain=[(primary, "gemini-flash-latest"), (backup, "gemini-flash-lite-latest")],
+            sleep=no_sleep,
+            data_dir=tmp_path,
+        )
+    assert result.fallback_used
+    assert result.model == "gemini-flash-latest"  # what was asked for (cache key)
+    assert result.answered_by == "gemini-flash-lite-latest"  # who wrote it
+    key = cache_key("CS2040S", result.provider, result.model, result.prompt_version)
+    assert cache.get_by_key(key) is not None  # the page's export link resolves

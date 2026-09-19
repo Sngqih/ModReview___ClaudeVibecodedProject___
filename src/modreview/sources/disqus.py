@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import html
 import logging
-import re
 from datetime import UTC, datetime
 
+from modreview.clean import strip_html
 from modreview.http import get_with_retry
 from modreview.models import SourceDoc
 from modreview.sources.base import SourceContext, SourceUnavailable
@@ -18,17 +17,6 @@ FORUM = "nusmods-prod"
 MAX_POSTS = 300
 MIN_CHARS = 30
 PAGE_SIZE = 100
-
-_TAG_RE = re.compile(r"<[^>]+>")
-_WS_RE = re.compile(r"[ \t]+")
-
-
-def strip_html(s: str) -> str:
-    s = re.sub(r"<\s*br\s*/?>|</p>|</div>", "\n", s, flags=re.I)
-    s = _TAG_RE.sub("", s)
-    s = html.unescape(s)
-    s = _WS_RE.sub(" ", s)
-    return re.sub(r"\n{3,}", "\n\n", s).strip()
 
 
 def thread_selectors(code: str) -> list[tuple[str, str]]:
@@ -80,7 +68,8 @@ class DisqusSource:
         for p in posts:
             if p.get("isDeleted") or p.get("isSpam"):
                 continue
-            text = (p.get("raw_message") or strip_html(p.get("message") or "")).strip()
+            # raw_message still carries the tags and entities reviewers typed (<b>, &amp;).
+            text = strip_html(p.get("raw_message") or p.get("message") or "").strip()
             if len(text) < MIN_CHARS:
                 continue
             post_id = str(p.get("id", ""))

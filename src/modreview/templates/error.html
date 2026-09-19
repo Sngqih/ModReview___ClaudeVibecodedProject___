@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block title %}{{ title }} · ModReview{% endblock %}
+{% block content %}
+<section class="empty" data-reveal>
+  <p class="eyebrow">Something is off</p>
+  <h1 class="page-title">{{ title }}</h1>
+  <p class="muted">{{ message }}</p>
+  <a class="btn btn--primary" href="/">Search a module</a>
+</section>
+{% endblock %}

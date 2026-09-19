@@ -1,0 +1,34 @@
+{% macro icon(name, cls="") -%}
+<svg class="icon {{ cls }}" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"/></svg>
+{%- endmacro %}
+
+{% macro sentiment(s) -%}
+<span class="pill pill--{{ s|sentiment_tone }}">{{ s }}</span>
+{%- endmacro %}
+
+{% macro meter(d, small=False) -%}
+<span class="meter{{ ' meter--sm' if small }}" role="img" aria-label="Difficulty {{ d if d else 'unknown' }} of 5">
+  {%- for i in range(1, 6) %}<i{% if d and i <= d %} class="on"{% endif %}></i>{% endfor -%}
+</span>
+{%- endmacro %}
+
+{% macro claims(items, numbers, docs_by_id) -%}
+<ul class="claims">
+  {%- for c in items %}
+  <li>{{ c.text }}
+    {%- for sid in c.source_ids %}{% set d = docs_by_id.get(sid) %}{% if d %}<a class="cite" href="#src-{{ numbers[sid] }}" data-tip="{{ d|cite_tip }}" aria-label="Source {{ numbers[sid] }}: {{ d|cite_tip }}">{{ numbers[sid] }}</a>{% endif %}{% endfor -%}
+  </li>
+  {%- endfor %}
+</ul>
+{%- endmacro %}
+
+{% macro source_item(d, numbers) -%}
+<li class="source" id="src-{{ numbers[d.id] }}">
+  <span class="source__num">{{ numbers[d.id] }}</span>
+  <div class="source__body">
+    <a class="source__title" href="{{ d.url|safe_url }}" target="_blank" rel="noopener noreferrer">{{ d.title or (d.url|host) }}{{ icon('arrow', 'icon--sm') }}</a>
+    <p class="source__meta">{{ SOURCE_LABELS[d.source] }} · {{ d.published_at|sgt('%d %b %Y') if d.published_at else 'undated' }}{% if d.score %} · {{ d.score }} point{{ 's' if d.score != 1 }}{% endif %} · {{ d.url|host }}</p>
+    <p class="source__excerpt">{{ d.text|excerpt }}</p>
+  </div>
+</li>
+{%- endmacro %}

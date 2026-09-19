@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block title %}Settings · ModReview{% endblock %}
+{% block content %}
+<header class="page-head" data-reveal>
+  <p class="eyebrow">Settings</p>
+  <h1 class="page-title">How reports are made</h1>
+  <p class="muted">Saved to <span class="mono">config.toml</span> and used from the next report on. No restart needed.</p>
+</header>
+
+{% if saved %}<p class="flash flash--ok" role="status">{{ icon('check') }}Saved. The next report uses these settings.</p>{% endif %}
+{% if error %}<p class="flash flash--bad" role="alert">{{ icon('warn') }}{{ error }}</p>{% endif %}
+
+<form class="settings" method="post" action="/settings">
+  <div class="settings__grid">
+    <section class="card" data-reveal>
+      <h2 class="card__title">Summariser</h2>
+      <div class="field">
+        <label for="provider">Provider</label>
+        <select id="provider" name="provider" hx-get="/settings/models" hx-trigger="change" hx-target="#model-slot" hx-include="this">
+          {% for value, label in providers %}<option value="{{ value }}"{% if value == cfg.llm.provider %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="model">Model</label>
+        <div id="model-slot">{% with name="model", selected=cfg.llm.model, error=model_error %}{% include "partials/model_select.html" %}{% endwith %}</div>
+        <p class="hint">Listed live from the provider. New models appear here on their own.</p>
+      </div>
+      <div class="field">
+        <label for="fallback_model">Fallback model</label>
+        <select id="fallback_model" name="fallback_model">
+          {% for m in fallback_models %}<option value="{{ m }}"{% if cfg.llm.fallback and m == cfg.llm.fallback.model %} selected{% endif %}>{{ m or 'No fallback' }}</option>{% endfor %}
+        </select>
+        <p class="hint">Used when the main model is rate limited, down, or returns broken output twice.</p>
+      </div>
+      <div class="field-actions">
+        <button class="btn btn--ghost" type="button" hx-post="/settings/test" hx-vals='{"kind": "llm"}' hx-include="#provider" hx-target="#llm-test" hx-indicator="#llm-test">Test connection</button>
+        <span id="llm-test" class="test-slot"></span>
+      </div>
+    </section>
+
+    <section class="card" data-reveal>
+      <h2 class="card__title">Web search</h2>
+      <fieldset class="field">
+        <legend>Provider</legend>
+        {% for value, label, built in search_providers %}
+        <label class="radio{{ ' radio--disabled' if not built }}">
+          <input type="radio" name="search_provider" value="{{ value }}"{% if value == cfg.search.provider %} checked{% endif %}{% if not built %} disabled{% endif %}>
+          <span>{{ label }}{% if not built %} <span class="muted">· not built yet</span>{% endif %}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+      <div class="field-actions">
+        <button class="btn btn--ghost" type="button" hx-post="/settings/test" hx-vals='{"kind": "search"}' hx-include="[name=search_provider]:checked" hx-target="#search-test">Test connection</button>
+        <span id="search-test" class="test-slot"></span>
+      </div>
+      <p class="hint">A Tavily test uses one search credit.</p>
+    </section>
+
+    <section class="card" data-reveal>
+      <h2 class="card__title">Sources</h2>
+      <label class="check check--row"><input type="checkbox" checked disabled><span><strong>NUSMods</strong> <span class="muted">Always on. The title and facts come from here.</span></span></label>
+      <label class="check check--row"><input type="checkbox" name="src_disqus"{% if cfg.sources.disqus %} checked{% endif %}><span><strong>NUSMods reviews</strong> <span class="muted">Disqus comments on each module page.</span></span></label>
+      <label class="check check--row"><input type="checkbox" name="src_reddit"{% if cfg.sources.reddit %} checked{% endif %}><span><strong>Reddit r/nus</strong> <span class="muted">Found through web search.</span></span></label>
+      <label class="check check--row"><input type="checkbox" name="src_websearch"{% if cfg.sources.websearch %} checked{% endif %}><span><strong>Other web pages</strong> <span class="muted">Blogs and posts that mention the code.</span></span></label>
+      <div class="field field--inline">
+        <label for="cache_ttl_days">Reuse a report for</label>
+        <input id="cache_ttl_days" name="cache_ttl_days" type="number" min="0" max="365" value="{{ cfg.limits.cache_ttl_days }}">
+        <span class="muted">days (0 turns the cache off)</span>
+      </div>
+    </section>
+
+    <section class="card" data-reveal>
+      <h2 class="card__title">API keys</h2>
+      <ul class="keys">
+        {% for k in keys %}
+        <li class="keys__row">
+          <span class="keys__dot keys__dot--{{ 'ok' if k.set else ('bad' if k.required else 'off') }}" aria-hidden="true"></span>
+          <span class="keys__label">{{ k.label }}<span class="mono">{{ k.env }}</span></span>
+          <span class="keys__state">{{ 'Set' if k.set else ('Missing' if k.required else 'Not set, optional') }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="hint">Keys live in the <span class="mono">.env</span> file in the project folder and are read when ModReview starts, so restart after editing it. Their values are never shown or sent to this page.</p>
+    </section>
+  </div>
+
+  <div class="savebar">
+    <span class="muted">Changes apply to the next report.</span>
+    <button class="btn btn--primary" type="submit">Save settings</button>
+  </div>
+</form>
+{% endblock %}

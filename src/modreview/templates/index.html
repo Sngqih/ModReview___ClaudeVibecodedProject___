@@ -1,14 +1,81 @@
 {% extends "base.html" %}
+{% from "macros.html" import icon, sentiment, meter %}
 {% block title %}ModReview · Search{% endblock %}
 {% block content %}
-<section class="hero">
-  <h1>What is this module really like?</h1>
-  <p class="lede">Type an NUS module code. ModReview reads NUSMods, student reviews, r/nus and the web, then writes a sourced report.</p>
-  <form class="search" action="/review" method="get">
-    <input name="code" type="text" placeholder="CS2040S" autocomplete="off" autofocus
-           pattern="[A-Za-z]{2,4}[0-9]{4}[A-Za-z]{0,3}" required>
-    <button type="submit">Review</button>
+<section class="hero" data-reveal>
+  <p class="eyebrow">NUS module reviews, with sources</p>
+  <h1 class="display">What is a module<br>really like?</h1>
+  <p class="lede">Type a module code. ModReview reads the official NUSMods listing, student reviews, r/nus threads and blog posts, then writes a short report where every point links back to who said it.</p>
+
+  <form class="search" action="/review" method="get" role="search">
+    <div class="search__row">
+      <label class="search__field">
+        <span class="visually-hidden">Module code or title</span>
+        {{ icon('search') }}
+        <input id="code" name="code" type="text" value="{{ prefill }}" placeholder="CS2040S or data structures"
+               list="module-options" autocomplete="off" spellcheck="false" autofocus required data-search
+               hx-get="/api/modules" hx-trigger="input changed delay:150ms" hx-target="#module-options" hx-swap="innerHTML">
+        <kbd title="Press / to focus">/</kbd>
+      </label>
+      <datalist id="module-options"></datalist>
+      <button class="btn btn--primary btn--lg" type="submit">Review</button>
+    </div>
+    <div class="search__options">
+      <label class="inline-field">
+        <span>Model</span>
+        <select name="model">
+          {% for m in models %}<option value="{{ '' if loop.first else m }}">{{ m }}{% if loop.first %} (default){% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="force" value="1"> Ignore cached report</label>
+      {% if model_error %}<span class="hint hint--warn">Model list unavailable: {{ model_error }}</span>{% endif %}
+    </div>
+    {% if error %}<p class="form-error" role="alert">{{ icon('warn') }} {{ error }}</p>{% endif %}
   </form>
-  <p class="meta">Summarising with <code>{{ provider }}</code> · <code>{{ model }}</code></p>
+</section>
+
+{% if recent %}
+<section class="block" data-reveal>
+  <h2 class="section-label">Recently reviewed</h2>
+  <div class="tiles">
+    {% for row in recent %}
+    <a class="tile" href="/history/view?key={{ row.cache_key|urlencode }}" data-reveal>
+      <span class="tile__code">{{ row.module_code }}</span>
+      <span class="tile__title">{{ row.title }}</span>
+      <span class="tile__meta">
+        {% if row.sentiment %}{{ sentiment(row.sentiment) }}{% endif %}
+        {{ meter(row.difficulty, small=True) }}
+        <span class="tile__date">{{ row.created_at|sgt('%d %b') }}</span>
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="block" data-reveal>
+  <h2 class="section-label">Where the report comes from</h2>
+  <div class="bento">
+    <div class="bento__cell bento__cell--wide" data-reveal>
+      <span class="bento__tag pill pill--none">Official</span>
+      <h3>NUSMods</h3>
+      <p>Credits, weekly workload hours, prerequisites and exam dates. Shown as facts, never summarised away.</p>
+    </div>
+    <div class="bento__cell" data-reveal>
+      <span class="bento__tag pill pill--good">Most weight</span>
+      <h3>Student reviews</h3>
+      <p>The review threads under each NUSMods module page.</p>
+    </div>
+    <div class="bento__cell" data-reveal>
+      <span class="bento__tag pill pill--mixed">Snippets</span>
+      <h3>r/nus</h3>
+      <p>Threads found by search. Reddit blocks full reads from this network, so the search excerpt is used.</p>
+    </div>
+    <div class="bento__cell bento__cell--wide" data-reveal>
+      <span class="bento__tag pill pill--info">Filtered</span>
+      <h3>Blogs and other pages</h3>
+      <p>Kept only if the page actually mentions the module code. Newer sources count for more, and where students disagree the report says so instead of averaging.</p>
+    </div>
+  </div>
 </section>
 {% endblock %}

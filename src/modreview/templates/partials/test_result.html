@@ -1,0 +1,2 @@
+{% from "macros.html" import icon %}
+<span class="test-result test-result--{{ 'ok' if ok else 'bad' }}" role="status">{{ icon('check' if ok else 'warn') }}{{ message }}</span>

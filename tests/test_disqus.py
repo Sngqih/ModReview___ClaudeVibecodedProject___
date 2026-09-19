@@ -84,3 +84,22 @@ async def test_no_thread_anywhere_returns_empty() -> None:
     )
     async with make_client() as client:
         assert await DisqusSource(_ctx(client)).fetch("ZZ9999") == []
+
+
+@respx.mock
+async def test_raw_message_markup_is_stripped() -> None:
+    post = {
+        "id": "9",
+        "raw_message": (
+            "<b>CS2040S: Data Structures &amp; Algorithms</b><br>AY24/25 S2, heavy but fair."
+        ),
+        "createdAt": "2025-07-26T10:00:00",
+        "likes": 2,
+        "author": {"name": "reviewer"},
+    }
+    respx.get(DISQUS_LIST_POSTS).mock(
+        return_value=httpx.Response(200, json={"code": 0, "response": [post], "cursor": {}})
+    )
+    async with make_client() as client:
+        docs = await DisqusSource(_ctx(client)).fetch("CS2040S")
+    assert docs[0].text == "CS2040S: Data Structures & Algorithms\nAY24/25 S2, heavy but fair."

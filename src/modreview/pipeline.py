@@ -310,16 +310,18 @@ async def run_review(
         **base,
         report=report,
         docs=selected,
-        provider=res.provider,
-        model=res.model,
+        # model/provider are what was requested (the cache key); answered_by is who wrote it.
+        provider=provider_name,
+        model=model_name,
+        answered_by=res.model,
         usage=res.usage,
         cost_usd=res.cost_usd,
         fallback_used=res.fallback_used,
         prompt_chars=res.prompt_chars,
         dropped_citations=dropped,
     )
-    # Cache under the requested provider/model, so a fallback answer still serves the same
-    # request next time. The footer shows the model that actually answered via fallback_used.
-    cache.put(result.model_copy(update={"provider": provider_name, "model": model_name}))
+    # Stored under the requested model, so a fallback answer still serves the same request
+    # next time; the footer shows answered_by and marks the fallback.
+    cache.put(result)
     await _emit_event(progress, ProgressEvent(kind="stage", stage="done", message="Done"))
     return result

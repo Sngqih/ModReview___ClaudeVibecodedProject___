@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} · ModReview{% endblock %}
+{% block content %}
+<div data-review-root>
+  {% if result %}
+    {% include "partials/report.html" %}
+  {% else %}
+  <section class="progress-card" data-stream="{{ stream_url }}" data-reveal>
+    <p class="eyebrow">{{ code }}</p>
+    <h1 class="progress-card__title">Building the review</h1>
+    <p class="muted">Reading NUSMods, student reviews, r/nus and the web, then summarising with <span class="mono">{{ model }}</span>. This usually takes 20 to 40 seconds.</p>
+    <ol class="progress-list" data-progress-list aria-live="polite"></ol>
+    <noscript><p class="form-error">Live progress needs JavaScript. Run <code>uv run modreview review {{ code }}</code> in a terminal instead.</p></noscript>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

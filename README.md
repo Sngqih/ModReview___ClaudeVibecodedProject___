@@ -21,6 +21,13 @@ uv run modreview
 
 Flags: `--debug` (source counts and prompt size), `--port N`, `--no-browser`.
 
+## Using it
+
+- **Search**: type a code or part of a title and press Enter. Press `/` anywhere to jump to the search box. A report takes 20 to 40 seconds the first time and is reused for 14 days.
+- **Report**: every point has small numbers; hover one to see the source, click it to jump to the source list. The right-hand panel is the official NUSMods data. Regenerate rebuilds the report; Download saves it as Markdown.
+- **Settings**: change the model, fallback model, search provider, sources and cache lifetime. Changes apply to the next report without a restart. Keys are only shown as set or missing.
+- **History**: every saved report, with download and delete.
+
 ## Terminal tools
 
 ```bash

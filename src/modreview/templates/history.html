@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, sentiment, meter %}
+{% block title %}History · ModReview{% endblock %}
+{% block content %}
+<header class="page-head" data-reveal>
+  <p class="eyebrow">History</p>
+  <h1 class="page-title">Past reports</h1>
+  <p class="muted">One report per module and model. Regenerating replaces the old one. Reports older than the cache lifetime are rebuilt on the next search but stay listed here until you delete them.</p>
+</header>
+
+{% if rows %}
+<ul class="history">
+  {% for row in rows %}
+  <li class="history__row" data-reveal>
+    <a class="history__main" href="/history/view?key={{ row.cache_key|urlencode }}">
+      <span class="history__code">{{ row.module_code }}</span>
+      <span class="history__title">{{ row.title }}</span>
+    </a>
+    <span class="history__verdict">
+      {% if row.sentiment %}{{ sentiment(row.sentiment) }}{% endif %}
+      {{ meter(row.difficulty, small=True) }}
+    </span>
+    <span class="history__meta"><span class="mono">{{ row.model }}</span><br>{{ row.created_at|sgt }}</span>
+    <span class="history__actions">
+      <a class="icon-btn" href="/export?key={{ row.cache_key|urlencode }}" download title="Download as Markdown" aria-label="Download {{ row.module_code }} as Markdown">{{ icon('download') }}</a>
+      <button class="icon-btn icon-btn--danger" type="button" title="Delete" aria-label="Delete the {{ row.module_code }} report"
+              hx-delete="/history?key={{ row.cache_key|urlencode }}" hx-target="closest .history__row" hx-swap="outerHTML"
+              hx-confirm="Delete the {{ row.module_code }} report ({{ row.model }})?">{{ icon('trash') }}</button>
+    </span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty" data-reveal>
+  <p class="empty__title">No reports yet.</p>
+  <p class="muted">Search for a module and its report will show up here.</p>
+  <a class="btn btn--primary" href="/">Search a module</a>
+</div>
+{% endif %}
+{% endblock %}
