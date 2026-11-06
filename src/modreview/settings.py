@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Literal
 
 import tomli_w
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 log = logging.getLogger(__name__)
@@ -29,6 +29,9 @@ DEFAULT_ENV_PATH = PROJECT_ROOT / ".env"
 DEFAULT_DATA_DIR = PROJECT_ROOT / "data"
 
 SearchProviderName = Literal["tavily", "brave", "claude_websearch", "none"]
+
+# Gemini's OpenAI-compatible endpoint, so a fresh install needs only the API key.
+GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
 # --------------------------------------------------------------------------- secrets
@@ -49,8 +52,14 @@ class Secrets(BaseSettings):
     brave_api_key: SecretStr | None = None
     reddit_client_id: SecretStr | None = None
     reddit_client_secret: SecretStr | None = None
-    openai_compat_base_url: str | None = None
+    openai_compat_base_url: str = GEMINI_OPENAI_BASE_URL
     openai_compat_api_key: SecretStr | None = None
+
+    @field_validator("openai_compat_base_url", mode="before")
+    @classmethod
+    def _blank_base_url_means_gemini(cls, v: object) -> object:
+        # An empty ``OPENAI_COMPAT_BASE_URL=`` line in .env falls back to Gemini.
+        return v if v and str(v).strip() else GEMINI_OPENAI_BASE_URL
 
     def present(self) -> dict[str, bool]:
         """Which keys are set. Only booleans ever leave this object for the UI."""

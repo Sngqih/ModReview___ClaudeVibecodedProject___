@@ -330,6 +330,7 @@ kbd {
 .notice--bad .icon { color: var(--bad); }
 .notice strong { color: var(--ink); font-weight: 600; }
 .notice p { margin-top: 4px; color: var(--muted); }
+.notice .key-list { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; line-height: 1.8; }
 
 .report-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 64px; align-items: start; }
 .report-main { min-width: 0; }

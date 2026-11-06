@@ -90,7 +90,7 @@ def sample_report(code: str) -> ReviewReport:
 
 def make_result(code: str = "CS2040S", model: str = "gemini-flash-latest", **kw):
     """A finished ReviewResult whose citations point at real docs."""
-    from datetime import UTC, datetime
+    from datetime import UTC, datetime, timedelta
 
     from modreview.models import SourceDoc, SourceStatus
     from modreview.review import ReviewResult
@@ -153,7 +153,8 @@ def make_result(code: str = "CS2040S", model: str = "gemini-flash-latest", **kw)
         "prompt_version": PROMPT_VERSION,
         "usage": Usage(input_tokens=35057, output_tokens=3237),
         "cost_usd": 0.0,
-        "generated_at": datetime(2026, 9, 19, 6, 30, tzinfo=UTC),
+        # Relative to now so the 14-day cache still treats it as fresh.
+        "generated_at": datetime.now(UTC) - timedelta(hours=1),
         "docs_collected": 5,
     }
     base.update(kw)

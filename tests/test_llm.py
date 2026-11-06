@@ -21,7 +21,14 @@ from modreview.llm.prompt import PROMPT_VERSION, build_user_message, load_system
 from modreview.llm.registry import make_llm_provider
 from modreview.llm.summarise import resolve_providers, summarise
 from modreview.models import ReviewReport, SourceDoc
-from modreview.settings import AppConfig, LLMConfig, LLMFallback, Pricing, Secrets
+from modreview.settings import (
+    GEMINI_OPENAI_BASE_URL,
+    AppConfig,
+    LLMConfig,
+    LLMFallback,
+    Pricing,
+    Secrets,
+)
 from modreview.sources.nusmods import parse_module
 from tests.helpers import FakeLLM, load_json, sample_report
 
@@ -216,11 +223,21 @@ def test_registry() -> None:
 
 
 def test_resolve_providers_requires_key() -> None:
-    with pytest.raises(LLMPermanentError, match="OPENAI_COMPAT_BASE_URL"):
+    with pytest.raises(LLMPermanentError, match="OPENAI_COMPAT_API_KEY"):
         resolve_providers(AppConfig(), Secrets(_env_file=None))
     anthropic_cfg = AppConfig(llm=LLMConfig(provider="anthropic", model="claude-haiku-4-5"))
     with pytest.raises(LLMPermanentError, match="ANTHROPIC_API_KEY"):
         resolve_providers(anthropic_cfg, Secrets(_env_file=None))
+
+
+def test_base_url_defaults_to_gemini() -> None:
+    assert Secrets(_env_file=None).openai_compat_base_url == GEMINI_OPENAI_BASE_URL
+    blank = Secrets(_env_file=None, openai_compat_base_url="  ")
+    assert blank.openai_compat_base_url == GEMINI_OPENAI_BASE_URL
+    # A local OpenAI-compatible server needs no key.
+    local = Secrets(_env_file=None, openai_compat_base_url="http://localhost:11434/v1")
+    p, why = make_llm_provider("openai_compat", local)
+    assert p is not None and why is None
 
 
 def test_resolve_providers_default_chain_is_gemini() -> None:

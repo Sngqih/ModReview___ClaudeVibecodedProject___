@@ -7,6 +7,18 @@
   <h1 class="display">What is a module<br>really like?</h1>
   <p class="lede">Type a module code. ModReview reads the official NUSMods listing, student reviews, r/nus threads and blog posts, then writes a short report where every point links back to who said it.</p>
 
+  {% if missing_keys %}
+  <div class="notice" role="status">
+    {{ icon('warn') }}
+    <div><strong>Add your free API keys to get full reports.</strong>
+      <p>Until then you get the official NUSMods facts and Reddit threads, but no summary. Each key below is free; paste it into the <code>.env</code> file in the ModReview folder (copy <code>.env.example</code> if there is none), then restart ModReview.</p>
+      <ul class="key-list">
+        {% for k in missing_keys %}<li><code>{{ k.env }}</code> · {{ k.label }} · <a href="{{ k.url }}" target="_blank" rel="noopener">get a key</a></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
   <form class="search" action="/review" method="get" role="search">
     <div class="search__row">
       <label class="search__field">

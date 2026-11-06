@@ -32,6 +32,29 @@ def test_home_renders(client: TestClient) -> None:
     assert 'hx-get="/api/modules"' in r.text
 
 
+def test_home_lists_missing_keys(client: TestClient) -> None:
+    r = client.get("/")
+    assert "Add your free API keys" in r.text
+    for env in ("OPENAI_COMPAT_API_KEY", "TAVILY_API_KEY", "DISQUS_API_KEY"):
+        assert env in r.text
+    assert "aistudio.google.com/apikey" in r.text
+    assert "Model list unavailable" not in r.text  # the notice covers it
+
+
+def test_home_hides_notice_when_keys_set(store, cache) -> None:
+    from pydantic import SecretStr
+
+    from modreview.main import create_app
+    from modreview.settings import Secrets
+
+    keys = {
+        k: SecretStr("k") for k in ("openai_compat_api_key", "tavily_api_key", "disqus_api_key")
+    }
+    app = create_app(store, Secrets(_env_file=None, **keys), cache=cache)
+    with TestClient(app) as c:
+        assert "Add your free API keys" not in c.get("/").text
+
+
 def test_healthz_and_static(client: TestClient) -> None:
     assert client.get("/healthz").json()["status"] == "ok"
     for path in ("/static/htmx.min.js", "/static/app.js", "/static/style.css"):
@@ -230,7 +253,7 @@ def test_settings_rejects_bad_input(client: TestClient) -> None:
 
 def test_settings_test_connection_without_keys(client: TestClient) -> None:
     r = client.post("/settings/test", data={"kind": "llm", "provider": "openai_compat"})
-    assert "OPENAI_COMPAT_BASE_URL not set" in r.text and "test-result--bad" in r.text
+    assert "OPENAI_COMPAT_API_KEY not set" in r.text and "test-result--bad" in r.text
     r = client.post("/settings/test", data={"kind": "search", "search_provider": "tavily"})
     assert "TAVILY_API_KEY not set" in r.text
 

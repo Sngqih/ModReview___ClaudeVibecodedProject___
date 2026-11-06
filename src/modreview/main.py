@@ -63,6 +63,12 @@ KEY_LABELS = [
     ("brave_api_key", "BRAVE_API_KEY", "Brave search", False),
     ("reddit_client_id", "REDDIT_CLIENT_ID", "Reddit OAuth", False),
 ]
+# Where a newcomer gets each required key (shown on the home page while it is missing).
+KEY_SIGNUP = {
+    "openai_compat_api_key": "https://aistudio.google.com/apikey",
+    "tavily_api_key": "https://app.tavily.com",
+    "disqus_api_key": "https://disqus.com/api/applications/",
+}
 PROVIDER_LABELS = {"openai_compat": "OpenAI-compatible (Gemini)", "anthropic": "Anthropic"}
 SEARCH_LABELS = {
     "tavily": "Tavily",
@@ -148,14 +154,26 @@ def create_app(
             "export_url": f"/export?{urlencode({'key': key})}" if key else None,
         }
 
+    def missing_keys() -> list[dict[str, str]]:
+        """Required keys that are not set yet, for the home page's setup notice."""
+        present = secrets.present()
+        return [
+            {"env": env, "label": label, "url": KEY_SIGNUP[attr]}
+            for attr, env, label, req in KEY_LABELS
+            if req and attr in KEY_SIGNUP and not present.get(attr, False)
+        ]
+
     async def home_ctx(error: str | None = None, prefill: str = "") -> dict[str, Any]:
         cfg = store.config
         models, model_error = await catalog.options(cfg.llm.provider, cfg.llm.model, cfg.llm)
+        missing = missing_keys()
         return {
             "nav": "search",
             "cfg": cfg,
             "models": models,
-            "model_error": model_error,
+            # The setup notice already explains a missing key; don't repeat it under the form.
+            "model_error": None if missing else model_error,
+            "missing_keys": missing,
             "recent": cache.recent_codes(8),
             "error": error,
             "prefill": prefill,

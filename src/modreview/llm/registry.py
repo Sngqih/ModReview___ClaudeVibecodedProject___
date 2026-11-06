@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from modreview.llm.base import LLMProvider
-from modreview.settings import LLMConfig, Secrets
+from modreview.settings import GEMINI_OPENAI_BASE_URL, LLMConfig, Secrets
 
 LLM_PROVIDER_NAMES = ("anthropic", "openai_compat")
 
@@ -20,11 +20,17 @@ def make_llm_provider(
 
         return AnthropicProvider(key.get_secret_value()), None
     if name == "openai_compat":
-        if not secrets.openai_compat_base_url:
-            return None, "OPENAI_COMPAT_BASE_URL not set"
         from modreview.llm.openai_compat import OpenAICompatProvider
 
         key = secrets.openai_compat_api_key
+        if secrets.openai_compat_base_url == GEMINI_OPENAI_BASE_URL and not (
+            key and key.get_secret_value().strip()
+        ):
+            # Local servers (Ollama, LM Studio) need no key; Gemini always does.
+            return (
+                None,
+                "OPENAI_COMPAT_API_KEY not set (free Gemini key: aistudio.google.com/apikey)",
+            )
         return (
             OpenAICompatProvider(
                 secrets.openai_compat_base_url,
